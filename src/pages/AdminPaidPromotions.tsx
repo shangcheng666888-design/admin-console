@@ -110,6 +110,44 @@ function formatDateLabel(date: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+function formatDurationLabel(value: number | null, unit: PromotionRow['campaignDurationUnit']) {
+  if (!value) return '—'
+  if (unit === 'minute') return `${value} 分钟`
+  if (unit === 'hour') return `${value} 小时`
+  return `${value} 天`
+}
+
+function formatRemainingTime(remainingMs: number, isSettling: boolean) {
+  if (isSettling) return '已到结算时间'
+  const totalSeconds = Math.ceil(remainingMs / 1000)
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  if (days > 0) return `剩余 ${days} 天 ${hours} 小时`
+  if (hours > 0) return `剩余 ${hours} 小时 ${minutes} 分钟`
+  if (minutes > 0) return `剩余 ${minutes} 分钟`
+  return '剩余不足 1 分钟'
+}
+
+function progressPct(current: number, total: number) {
+  if (total <= 0) return 0
+  return Math.min(100, Math.round((current / total) * 100))
+}
+
+interface RunningCampaignItem {
+  promotion: PromotionRow
+  metrics: {
+    totals?: MetricPoint
+    presets?: MetricPoint
+    campaignProgress?: number
+    budgetProgress?: number
+    isCompleted?: boolean
+  }
+  remainingMs: number
+  remainingSeconds: number
+  isSettling: boolean
+}
+
 const AdminPaidPromotions: React.FC = () => {
   const { loadError, actionSuccess, actionError } = useAdminToast()
   const { requestEditConfirm } = useAdminEditConfirm()
@@ -143,6 +181,8 @@ const AdminPaidPromotions: React.FC = () => {
     channel: 'tiktok' as PaidChannel,
     adminNote: '',
   })
+  const [runningCampaigns, setRunningCampaigns] = useState<RunningCampaignItem[]>([])
+  const [runningLoading, setRunningLoading] = useState(false)
 
   const selected = useMemo(
     () => list.find((item) => item.id === selectedId) ?? null,
@@ -199,9 +239,25 @@ const AdminPaidPromotions: React.FC = () => {
     }
   }, [loadError, syncCampaignConfigFromPromotion])
 
+  const fetchRunningCampaigns = useCallback(async () => {
+    setRunningLoading(true)
+    try {
+      const res = await api.get<{ list: RunningCampaignItem[] }>('/api/admin/paid-promotions/running')
+      setRunningCampaigns(Array.isArray(res.list) ? res.list : [])
+    } catch (e) {
+      loadError(e, '加载投放中列表失败')
+      setRunningCampaigns([])
+    } finally {
+      setRunningLoading(false)
+    }
+  }, [loadError])
+
   useEffect(() => {
     fetchList()
-  }, [fetchList])
+    fetchRunningCampaigns()
+    const timer = window.setInterval(fetchRunningCampaigns, 10000)
+    return () => window.clearInterval(timer)
+  }, [fetchList, fetchRunningCampaigns])
 
   const searchShops = useCallback(async () => {
     const keyword = shopSearchInput.trim()
@@ -294,6 +350,7 @@ const AdminPaidPromotions: React.FC = () => {
       .then(() => {
         actionSuccess('状态已更新')
         fetchList()
+        fetchRunningCampaigns()
         if (selectedId === id) fetchMetrics(id)
       })
       .catch((e) => actionError(e, '更新失败'))
@@ -328,6 +385,7 @@ const AdminPaidPromotions: React.FC = () => {
       .then(() => {
         actionSuccess('推广已开启，系统将按设定智能消耗预算并释放数据')
         fetchList()
+        fetchRunningCampaigns()
         fetchMetrics(selectedId)
       })
       .catch((e: unknown) => actionError(e, '开启失败'))
@@ -363,6 +421,175 @@ const AdminPaidPromotions: React.FC = () => {
           </p>
         </div>
       </header>
+
+      <section className="admin-card admin-paid-promotions-running">
+        <div className="admin-paid-promotions-running-head">
+          <div>
+            <h2 className="admin-card-title">投放中监控</h2>
+            <p className="admin-paid-promotions-running-desc">
+              查看已开启推广的实时进度、配置参数与距离结算的剩余时间。
+            </p>
+          </div>
+          <button
+            type="button"
+            className="admin-btn admin-btn--sm admin-btn--ghost"
+            onClick={fetchRunningCampaigns}
+            disabled={runningLoading}
+          >
+            {runningLoading ? '刷新中…' : '刷新'}
+          </button>
+        </div>
+
+        {runningCampaigns.length === 0 ? (
+          <p className="admin-paid-promotions-placeholder">当前没有投放中的推广</p>
+        ) : (
+          <div className="admin-paid-promotions-running-grid">
+            {runningCampaigns.map((item) => {
+              const promo = item.promotion
+              const totals = item.metrics.totals
+              const presets = item.metrics.presets
+              const impressionsCurrent = totals?.impressions ?? 0
+              const clicksCurrent = totals?.clicks ?? 0
+              const visitsCurrent = totals?.visits ?? 0
+              const spendCurrent = totals?.spend ?? 0
+              const impressionsTarget = presets?.impressions ?? promo.presetImpressions ?? 0
+              const clicksTarget = presets?.clicks ?? promo.presetClicks ?? 0
+              const visitsTarget = presets?.visits ?? promo.presetVisits ?? 0
+              const budgetTarget = presets?.spend ?? promo.budgetTotal ?? 0
+              const campaignPct = Math.round((item.metrics.campaignProgress ?? 0) * 100)
+              const budgetPct = Math.round((item.metrics.budgetProgress ?? 0) * 100)
+              const clickRate =
+                impressionsCurrent > 0 ? Math.round((clicksCurrent / impressionsCurrent) * 1000) / 10 : 0
+
+              return (
+                <article key={promo.id} className="admin-paid-promotions-running-card">
+                  <header className="admin-paid-promotions-running-card-head">
+                    <div>
+                      <strong>{promo.shopName ?? promo.shopId}</strong>
+                      <span className="admin-paid-promotions-running-card-sub">
+                        {CHANNEL_OPTIONS.find((c) => c.value === promo.channel)?.label} · {promo.shopId}
+                      </span>
+                    </div>
+                    <span
+                      className={`admin-paid-promotions-running-timer${item.isSettling ? ' admin-paid-promotions-running-timer--due' : ''}`}
+                    >
+                      {formatRemainingTime(item.remainingMs, item.isSettling)}
+                    </span>
+                  </header>
+
+                  <div className="admin-paid-promotions-running-config">
+                    <div>
+                      <span>投放时长</span>
+                      <strong>{formatDurationLabel(promo.campaignDurationValue, promo.campaignDurationUnit)}</strong>
+                    </div>
+                    <div>
+                      <span>总预算</span>
+                      <strong>${budgetTarget.toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <span>总曝光</span>
+                      <strong>{impressionsTarget.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span>总点击</span>
+                      <strong>{clicksTarget.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span>总进店</span>
+                      <strong>{visitsTarget.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span>推广目标</span>
+                      <strong>
+                        {promo.targetType === 'product'
+                          ? promo.targetProductTitle ?? '单品'
+                          : promo.targetType === 'shop'
+                            ? '整店'
+                            : '—'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>投放地区</span>
+                      <strong>{promo.targetRegion ?? '—'}</strong>
+                    </div>
+                    <div>
+                      <span>目标受众</span>
+                      <strong>{promo.targetAudience ?? '—'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="admin-paid-promotions-running-progress-block">
+                    <div className="admin-paid-promotions-running-progress-row">
+                      <span>投放进度</span>
+                      <strong>{campaignPct}%</strong>
+                    </div>
+                    <div className="admin-paid-promotions-running-bar">
+                      <span style={{ width: `${campaignPct}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="admin-paid-promotions-running-progress-block">
+                    <div className="admin-paid-promotions-running-progress-row">
+                      <span>预算消耗</span>
+                      <strong>
+                        {budgetPct}% · ${spendCurrent.toFixed(2)} / ${budgetTarget.toFixed(2)}
+                      </strong>
+                    </div>
+                    <div className="admin-paid-promotions-running-bar admin-paid-promotions-running-bar--budget">
+                      <span style={{ width: `${budgetPct}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="admin-paid-promotions-running-live">
+                    <div>
+                      <span>曝光</span>
+                      <strong>
+                        {impressionsCurrent.toLocaleString()} / {impressionsTarget.toLocaleString()}
+                      </strong>
+                      <em>{progressPct(impressionsCurrent, impressionsTarget)}%</em>
+                    </div>
+                    <div>
+                      <span>点击</span>
+                      <strong>
+                        {clicksCurrent.toLocaleString()} / {clicksTarget.toLocaleString()}
+                      </strong>
+                      <em>{progressPct(clicksCurrent, clicksTarget)}%</em>
+                    </div>
+                    <div>
+                      <span>进店</span>
+                      <strong>
+                        {visitsCurrent.toLocaleString()} / {visitsTarget.toLocaleString()}
+                      </strong>
+                      <em>{progressPct(visitsCurrent, visitsTarget)}%</em>
+                    </div>
+                    <div>
+                      <span>点击率</span>
+                      <strong>{clickRate}%</strong>
+                      <em>自动计算</em>
+                    </div>
+                  </div>
+
+                  <div className="admin-paid-promotions-running-foot">
+                    <span>
+                      开始：{promo.campaignStartAt ? new Date(promo.campaignStartAt).toLocaleString() : '—'}
+                    </span>
+                    <span>
+                      结算：{promo.campaignEndAt ? new Date(promo.campaignEndAt).toLocaleString() : '—'}
+                    </span>
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn--sm"
+                      onClick={() => setSelectedId(promo.id)}
+                    >
+                      查看明细
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       <section className="admin-card admin-paid-promotions-create">
         <h2 className="admin-card-title">开启付费推广</h2>

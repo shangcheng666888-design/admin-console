@@ -25245,7 +25245,8 @@ button {
 
 .admin-paid-promotions-create,
 .admin-paid-promotions-list,
-.admin-paid-promotions-control {
+.admin-paid-promotions-control,
+.admin-paid-promotions-running {
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   background: #ffffff;
@@ -25607,6 +25608,175 @@ button {
   border-radius: 8px;
   padding: 0 0.35rem;
   font-size: 0.8125rem;
+}
+
+.admin-paid-promotions-running-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-paid-promotions-running-desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.admin-paid-promotions-running-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-paid-promotions-running-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 42%);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-paid-promotions-running-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.admin-paid-promotions-running-card-head strong {
+  display: block;
+  font-size: 0.9375rem;
+  color: #0f172a;
+}
+
+.admin-paid-promotions-running-card-sub {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.admin-paid-promotions-running-timer {
+  flex-shrink: 0;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.admin-paid-promotions-running-timer--due {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.admin-paid-promotions-running-config {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem 0.65rem;
+}
+
+.admin-paid-promotions-running-config span {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 0.1rem;
+}
+
+.admin-paid-promotions-running-config strong {
+  font-size: 0.8125rem;
+  color: #0f172a;
+}
+
+.admin-paid-promotions-running-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-paid-promotions-running-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.admin-paid-promotions-running-progress-row strong {
+  color: #0f172a;
+}
+
+.admin-paid-promotions-running-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.admin-paid-promotions-running-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+}
+
+.admin-paid-promotions-running-bar--budget span {
+  background: linear-gradient(90deg, #0ea5e9, #22c55e);
+}
+
+.admin-paid-promotions-running-live {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.admin-paid-promotions-running-live > div {
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+}
+
+.admin-paid-promotions-running-live span {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.admin-paid-promotions-running-live strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8125rem;
+  color: #0f172a;
+}
+
+.admin-paid-promotions-running-live em {
+  display: block;
+  margin-top: 0.1rem;
+  font-style: normal;
+  font-size: 0.72rem;
+  color: #6366f1;
+}
+
+.admin-paid-promotions-running-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid #eef2f7;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.admin-paid-promotions-running-foot .admin-btn {
+  margin-left: auto;
 }
 
 @media (max-width: 1100px) {
