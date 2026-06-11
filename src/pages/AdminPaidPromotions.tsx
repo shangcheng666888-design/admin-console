@@ -156,6 +156,39 @@ function formatDurationLabel(value: number | null, unit: PromotionRow['campaignD
   return `${value} 天`
 }
 
+function formatConfigLines(item: PromotionRow): { label: string; value: string }[] {
+  const lines: { label: string; value: string }[] = [
+    { label: '推广目标', value: formatTargetLabel(item) },
+    {
+      label: '投放地区',
+      value: item.targetRegion ? (REGION_LABEL[item.targetRegion] ?? item.targetRegion) : '—',
+    },
+    {
+      label: '目标受众',
+      value: item.targetAudience
+        ? (AUDIENCE_LABEL[item.targetAudience] ?? item.targetAudience)
+        : '—',
+    },
+    {
+      label: '投放时长',
+      value: formatDurationLabel(item.campaignDurationValue, item.campaignDurationUnit),
+    },
+  ]
+  if (item.presetImpressions != null) {
+    lines.push({
+      label: '曝光 / 点击 / 进店',
+      value: `${item.presetImpressions.toLocaleString()} / ${(item.presetClicks ?? 0).toLocaleString()} / ${(item.presetVisits ?? 0).toLocaleString()}`,
+    })
+  }
+  if (item.campaignStartAt) {
+    lines.push({
+      label: '投放时段',
+      value: `${formatDateTime(item.campaignStartAt)} — ${formatDateTime(item.campaignEndAt)}`,
+    })
+  }
+  return lines
+}
+
 function formatRemainingTime(remainingMs: number, isSettling: boolean) {
   if (isSettling) return '已到结算时间'
   const totalSeconds = Math.ceil(remainingMs / 1000)
@@ -265,7 +298,6 @@ async function enrichRecordsWithShopLogos(items: PromotionRecordItem[]): Promise
 
 function PromotionListItem({
   item,
-  metricsSummary,
   selected,
   onSelect,
   onConfigure,
@@ -273,15 +305,14 @@ function PromotionListItem({
   onEnd,
 }: {
   item: PromotionRow
-  metricsSummary: PromotionRecordItem['metricsSummary']
   selected: boolean
   onSelect: () => void
   onConfigure: () => void
   onPause: () => void
   onEnd: () => void
 }) {
-  const totals = metricsSummary?.totals
   const name = shopDisplayName(item)
+  const configLines = formatConfigLines(item)
 
   return (
     <article
@@ -297,50 +328,43 @@ function PromotionListItem({
       }}
     >
       <div className="admin-pp-list-col admin-pp-list-col--shop">
-        <ShopAvatar name={name} logo={item.shopLogo} size="lg" />
-        <div className="admin-pp-list-shop-copy">
-          <strong className="admin-pp-list-shop-name">{name}</strong>
-          <code className="admin-pp-list-shop-id">{item.shopId}</code>
-          <span className="admin-pp-list-owner">
-            店主 {item.ownerAccount?.trim() || '—'}
-          </span>
+        <div className="admin-pp-list-shop-main">
+          <ShopAvatar name={name} logo={item.shopLogo} size="sm" />
+          <div className="admin-pp-list-shop-copy">
+            <strong className="admin-pp-list-shop-name">{name}</strong>
+            <code className="admin-pp-list-shop-id">{item.shopId}</code>
+          </div>
         </div>
+        <span className="admin-pp-list-owner">
+          店主 {item.ownerAccount?.trim() || '—'}
+        </span>
       </div>
 
       <div className="admin-pp-list-col admin-pp-list-col--status">
         <StatusBadge status={item.status} />
-        <ChannelBadge channel={item.channel} />
         <time className="admin-pp-list-time">{formatDateTime(item.createdAt)}</time>
       </div>
 
-      <div className="admin-pp-list-col admin-pp-list-col--config">
-        <span className="admin-pp-list-tag">{formatTargetLabel(item)}</span>
-        {item.targetRegion ? (
-          <span className="admin-pp-list-tag admin-pp-list-tag--muted">
-            {REGION_LABEL[item.targetRegion] ?? item.targetRegion}
-          </span>
-        ) : null}
-        {item.budgetTotal != null ? (
-          <span className="admin-pp-list-tag admin-pp-list-tag--budget">
-            ${item.budgetTotal.toFixed(2)}
-          </span>
-        ) : null}
+      <div className="admin-pp-list-col admin-pp-list-col--channel">
+        <ChannelBadge channel={item.channel} />
       </div>
 
-      <div className="admin-pp-list-col admin-pp-list-col--metrics">
-        {totals ? (
-          <>
-            <div className="admin-pp-list-metric">
-              <em>进店</em>
-              <strong>{totals.visits.toLocaleString()}</strong>
+      <div className="admin-pp-list-col admin-pp-list-col--config">
+        <dl className="admin-pp-list-config">
+          {configLines.map((line) => (
+            <div key={line.label} className="admin-pp-list-config-row">
+              <dt>{line.label}</dt>
+              <dd>{line.value}</dd>
             </div>
-            <div className="admin-pp-list-metric">
-              <em>消耗</em>
-              <strong>${totals.spend.toFixed(2)}</strong>
-            </div>
-          </>
+          ))}
+        </dl>
+      </div>
+
+      <div className="admin-pp-list-col admin-pp-list-col--budget">
+        {item.budgetTotal != null ? (
+          <strong className="admin-pp-list-budget">${item.budgetTotal.toFixed(2)}</strong>
         ) : (
-          <span className="admin-pp-list-metrics-empty">暂无投放数据</span>
+          <span className="admin-pp-list-budget-empty">—</span>
         )}
       </div>
 
@@ -1054,9 +1078,10 @@ const AdminPaidPromotions: React.FC = () => {
 
             <div className="admin-pp-list-head-row" aria-hidden="true">
               <span className="admin-pp-list-col admin-pp-list-col--shop">店铺信息</span>
-              <span className="admin-pp-list-col admin-pp-list-col--status">状态 / 渠道</span>
+              <span className="admin-pp-list-col admin-pp-list-col--status">状态</span>
+              <span className="admin-pp-list-col admin-pp-list-col--channel">渠道</span>
               <span className="admin-pp-list-col admin-pp-list-col--config">推广配置</span>
-              <span className="admin-pp-list-col admin-pp-list-col--metrics">效果</span>
+              <span className="admin-pp-list-col admin-pp-list-col--budget">本次推广金额</span>
               <span className="admin-pp-list-col admin-pp-list-col--actions">操作</span>
             </div>
 
@@ -1067,11 +1092,10 @@ const AdminPaidPromotions: React.FC = () => {
                   <p>暂无推广列表</p>
                 </div>
               ) : (
-                records.map(({ promotion: item, metricsSummary }) => (
+                records.map(({ promotion: item }) => (
                   <PromotionListItem
                     key={item.id}
                     item={item}
-                    metricsSummary={metricsSummary}
                     selected={selectedId === item.id}
                     onSelect={() => setSelectedId(item.id)}
                     onConfigure={() => setSelectedId(item.id)}
