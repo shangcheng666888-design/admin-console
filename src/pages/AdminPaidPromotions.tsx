@@ -376,6 +376,19 @@ const AdminPaidPromotions: React.FC = () => {
     return () => window.clearInterval(timer)
   }, [fetchRecords, fetchRunningCampaigns])
 
+  const closeDetail = useCallback(() => {
+    setSelectedId(null)
+  }, [])
+
+  useEffect(() => {
+    if (!selectedId) return undefined
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDetail()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [selectedId, closeDetail])
+
   const searchShops = useCallback(async () => {
     const keyword = shopSearchInput.trim()
     if (!keyword) {
@@ -827,8 +840,7 @@ const AdminPaidPromotions: React.FC = () => {
         </aside>
 
         <div className="admin-pp-main">
-      <div className="admin-paid-promotions-layout">
-        <section className="admin-pp-panel admin-pp-panel--records">
+          <section className="admin-pp-panel admin-pp-panel--records">
           <div className="admin-paid-promotions-list-head">
             <div>
               <h2 className="admin-pp-panel-title">推广记录</h2>
@@ -901,7 +913,8 @@ const AdminPaidPromotions: React.FC = () => {
                     return (
                       <tr
                         key={item.id}
-                        className={selectedId === item.id ? 'admin-table-row--active' : ''}
+                        className={`admin-pp-record-row${selectedId === item.id ? ' admin-table-row--active' : ''}`}
+                        onClick={() => setSelectedId(item.id)}
                       >
                         <td>
                           <div>{formatDateTime(item.createdAt)}</div>
@@ -948,7 +961,7 @@ const AdminPaidPromotions: React.FC = () => {
                             <span className="admin-pp-muted">—</span>
                           )}
                         </td>
-                        <td>
+                        <td onClick={(e) => e.stopPropagation()}>
                           <div className="admin-table-actions">
                             <button
                               type="button"
@@ -993,18 +1006,42 @@ const AdminPaidPromotions: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </section>
+          </section>
+        </div>
+      </div>
 
-        <section className="admin-pp-panel admin-pp-panel--detail admin-paid-promotions-control">
-          <h2 className="admin-pp-panel-title">记录详情</h2>
-          {!selected ? (
-            <div className="admin-pp-empty">
-              <span className="admin-pp-empty-icon" aria-hidden="true">☰</span>
-              <p>从左侧选择一条推广记录</p>
-              <span className="admin-pp-empty-hint">可查看商家配置、投放参数与每日释放数据</span>
+      {selected ? (
+        <>
+          <div
+            className="admin-pp-drawer-overlay"
+            onClick={closeDetail}
+            role="presentation"
+            aria-hidden="true"
+          />
+          <div
+            className="admin-pp-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-pp-drawer-title"
+          >
+            <div className="admin-pp-drawer-head">
+              <div className="admin-pp-drawer-head-main">
+                <h2 id="admin-pp-drawer-title" className="admin-pp-drawer-title">
+                  推广记录详情
+                </h2>
+                <p className="admin-pp-drawer-subtitle">{selected.shopName ?? selected.shopId}</p>
+              </div>
+              <button
+                type="button"
+                className="admin-pp-drawer-close"
+                onClick={closeDetail}
+                aria-label="关闭"
+              >
+                ×
+              </button>
             </div>
-          ) : (
-            <>
+
+            <div className="admin-pp-drawer-body">
               <div className="admin-pp-detail-header">
                 <div className="admin-pp-detail-avatar" aria-hidden="true">
                   {(selected.shopName ?? selected.shopId).slice(0, 1).toUpperCase()}
@@ -1022,14 +1059,30 @@ const AdminPaidPromotions: React.FC = () => {
                 </div>
               </div>
 
-              <div className="admin-paid-promotions-selected-meta admin-pp-detail-meta">
-                <div><span>创建</span>{formatDateTime(selected.createdAt)}</div>
-                {selected.adminNote ? <div><span>备注</span>{selected.adminNote}</div> : null}
+              <div className="admin-drawer-summary admin-pp-drawer-summary">
+                <div className="admin-drawer-summary-main">
+                  <span className="admin-drawer-summary-title">#{selected.id}</span>
+                  <code className="admin-drawer-summary-sub">创建于 {formatDateTime(selected.createdAt)}</code>
+                </div>
+                <div className="admin-drawer-summary-aside">
+                  {selected.budgetTotal != null ? (
+                    <span className="admin-drawer-summary-money">${selected.budgetTotal.toFixed(2)}</span>
+                  ) : (
+                    <span className="admin-pp-drawer-summary-placeholder">待配置预算</span>
+                  )}
+                </div>
               </div>
 
-              <div className="admin-paid-promotions-config-detail">
-                <h3 className="admin-paid-promotions-config-detail-title">商家配置</h3>
-                <dl className="admin-paid-promotions-config-dl">
+              {selected.adminNote ? (
+                <section className="admin-drawer-section">
+                  <h3 className="admin-drawer-section-title">管理员备注</h3>
+                  <p className="admin-pp-drawer-note">{selected.adminNote}</p>
+                </section>
+              ) : null}
+
+              <section className="admin-drawer-section">
+                <h3 className="admin-drawer-section-title">商家配置</h3>
+                <dl className="admin-paid-promotions-config-dl admin-pp-drawer-dl">
                   <div>
                     <dt>推广目标</dt>
                     <dd>{formatTargetLabel(selected)}</dd>
@@ -1055,11 +1108,11 @@ const AdminPaidPromotions: React.FC = () => {
                     <dd>{formatDateTime(selected.merchantConfirmedAt)}</dd>
                   </div>
                 </dl>
-              </div>
+              </section>
 
-              <div className="admin-paid-promotions-config-detail">
-                <h3 className="admin-paid-promotions-config-detail-title">投放配置</h3>
-                <dl className="admin-paid-promotions-config-dl">
+              <section className="admin-drawer-section">
+                <h3 className="admin-drawer-section-title">投放配置</h3>
+                <dl className="admin-paid-promotions-config-dl admin-pp-drawer-dl">
                   <div>
                     <dt>投放时长</dt>
                     <dd>{formatDurationLabel(selected.campaignDurationValue, selected.campaignDurationUnit)}</dd>
@@ -1085,94 +1138,90 @@ const AdminPaidPromotions: React.FC = () => {
                     </dd>
                   </div>
                 </dl>
-              </div>
+              </section>
 
               {needsCampaignConfig(selected) ? (
-                <div className="admin-paid-promotions-config-panel">
+                <section className="admin-drawer-section admin-pp-drawer-config-section">
+                  <h3 className="admin-drawer-section-title">开启投放</h3>
                   <p className="admin-paid-promotions-config-hint">
                     商家已确认推广方案，请填写投放参数后点击「开启推广」。
                   </p>
-                <div className="admin-paid-promotions-config-grid">
-                  <label className="admin-field admin-field--duration">
-                    <span>投放时长</span>
-                    <div className="admin-paid-promotions-duration-row">
+                  <div className="admin-paid-promotions-config-grid admin-pp-drawer-config-grid">
+                    <label className="admin-field admin-field--duration">
+                      <span>投放时长</span>
+                      <div className="admin-paid-promotions-duration-row">
+                        <input
+                          type="number"
+                          min={1}
+                          max={durationMax}
+                          value={campaignConfig.durationValue}
+                          onChange={(e) => setCampaignConfig((prev) => ({ ...prev, durationValue: e.target.value }))}
+                        />
+                        <select
+                          value={campaignConfig.durationUnit}
+                          onChange={(e) =>
+                            setCampaignConfig((prev) => ({
+                              ...prev,
+                              durationUnit: e.target.value as 'minute' | 'hour' | 'day',
+                            }))
+                          }
+                        >
+                          <option value="minute">分钟</option>
+                          <option value="hour">小时</option>
+                          <option value="day">天</option>
+                        </select>
+                      </div>
+                    </label>
+                    <label className="admin-field">
+                      <span>总预算 ($)</span>
                       <input
                         type="number"
-                        min={1}
-                        max={durationMax}
-                        value={campaignConfig.durationValue}
-                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, durationValue: e.target.value }))}
+                        min={0}
+                        step="0.01"
+                        value={campaignConfig.budgetTotal}
+                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, budgetTotal: e.target.value }))}
                       />
-                      <select
-                        value={campaignConfig.durationUnit}
-                        onChange={(e) =>
-                          setCampaignConfig((prev) => ({
-                            ...prev,
-                            durationUnit: e.target.value as 'minute' | 'hour' | 'day',
-                          }))
-                        }
-                      >
-                        <option value="minute">分钟</option>
-                        <option value="hour">小时</option>
-                        <option value="day">天</option>
-                      </select>
-                    </div>
-                  </label>
-                  <label className="admin-field">
-                    <span>总预算 ($)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={campaignConfig.budgetTotal}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, budgetTotal: e.target.value }))}
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>总曝光</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={campaignConfig.impressions}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, impressions: e.target.value }))}
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>总点击</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={campaignConfig.clicks}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, clicks: e.target.value }))}
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>总进店</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={campaignConfig.visits}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, visits: e.target.value }))}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="admin-btn admin-btn--primary admin-paid-promotions-launch-btn"
-                    onClick={handleLaunch}
-                    disabled={launching}
-                  >
-                    {launching ? '开启中…' : '开启推广'}
-                  </button>
-                </div>
-                </div>
+                    </label>
+                    <label className="admin-field">
+                      <span>总曝光</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={campaignConfig.impressions}
+                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, impressions: e.target.value }))}
+                      />
+                    </label>
+                    <label className="admin-field">
+                      <span>总点击</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={campaignConfig.clicks}
+                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, clicks: e.target.value }))}
+                      />
+                    </label>
+                    <label className="admin-field">
+                      <span>总进店</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={campaignConfig.visits}
+                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, visits: e.target.value }))}
+                      />
+                    </label>
+                  </div>
+                </section>
               ) : selected.status === 'pending' ? (
-                <p className="admin-paid-promotions-placeholder">
-                  等待商家在仪表盘选择推广目标、地区与受众并确认。
-                </p>
+                <section className="admin-drawer-section">
+                  <p className="admin-paid-promotions-placeholder">
+                    等待商家在仪表盘选择推广目标、地区与受众并确认。
+                  </p>
+                </section>
               ) : hasLaunchedCampaign(selected) ? (
-                <>
+                <section className="admin-drawer-section">
+                  <h3 className="admin-drawer-section-title">每日释放数据</h3>
                   {metricsSummary || selectedRecord?.metricsSummary ? (
-                    <div className="admin-paid-promotions-live-summary">
+                    <div className="admin-paid-promotions-live-summary admin-pp-drawer-live-summary">
                       <span>
                         预算消耗：
                         {Math.round(
@@ -1223,16 +1272,54 @@ const AdminPaidPromotions: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
-                </>
+                </section>
               ) : (
-                <p className="admin-paid-promotions-placeholder">当前状态无需配置投放。</p>
+                <section className="admin-drawer-section">
+                  <p className="admin-paid-promotions-placeholder">当前状态无需配置投放。</p>
+                </section>
               )}
-            </>
-          )}
-        </section>
-      </div>
-        </div>
-      </div>
+            </div>
+
+            <div className="admin-pp-drawer-actions">
+              {needsCampaignConfig(selected) ? (
+                <button
+                  type="button"
+                  className="admin-pp-drawer-btn"
+                  onClick={handleLaunch}
+                  disabled={launching}
+                >
+                  {launching ? '开启中…' : '开启推广'}
+                </button>
+              ) : null}
+              {selected.status === 'active' && hasLaunchedCampaign(selected) ? (
+                <>
+                  <button
+                    type="button"
+                    className="admin-pp-drawer-btn admin-pp-drawer-btn--secondary"
+                    onClick={() => updateStatus(selected.id, 'paused')}
+                  >
+                    暂停
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-pp-drawer-btn admin-pp-drawer-btn--secondary"
+                    onClick={() => updateStatus(selected.id, 'ended')}
+                  >
+                    结束
+                  </button>
+                </>
+              ) : null}
+              <button
+                type="button"
+                className="admin-pp-drawer-btn admin-pp-drawer-btn--secondary"
+                onClick={closeDetail}
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }
