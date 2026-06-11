@@ -25707,11 +25707,11 @@ button {
 
 .admin-pp-list-head-row,
 .admin-pp-list-item {
-  --pp-list-cols: minmax(168px, 1.05fr) minmax(88px, 0.62fr) minmax(88px, 0.62fr) minmax(220px, 1.45fr) minmax(96px, 0.68fr) minmax(108px, 0.72fr);
+  --pp-list-cols: minmax(148px, 0.95fr) minmax(80px, 0.55fr) minmax(80px, 0.55fr) minmax(140px, 1fr) minmax(96px, 0.68fr) minmax(108px, 0.72fr);
   display: grid;
   grid-template-columns: var(--pp-list-cols);
   gap: 0.65rem;
-  align-items: start;
+  align-items: center;
   padding-left: 1rem;
   padding-right: 1rem;
 }
@@ -25774,23 +25774,14 @@ button {
 }
 
 .admin-pp-list-col--shop {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.3rem;
-  justify-content: flex-start;
-}
-
-.admin-pp-list-shop-main {
-  display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
-  min-width: 0;
+  justify-content: flex-start;
 }
 
 .admin-pp-list-col--shop .admin-pp-shop-avatar {
   flex-shrink: 0;
-  margin-top: 0.1rem;
 }
 
 .admin-pp-list-shop-copy {
@@ -25799,12 +25790,6 @@ button {
   gap: 0.1rem;
   min-width: 0;
   flex: 1;
-}
-
-.admin-pp-list-owner {
-  font-size: 0.72rem;
-  color: #64748b;
-  line-height: 1.35;
 }
 
 .admin-pp-list-shop-name {
@@ -25819,50 +25804,25 @@ button {
 .admin-pp-list-col--channel {
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   text-align: center;
   gap: 0.35rem;
-  padding-top: 0.05rem;
-}
-
-.admin-pp-list-time {
-  font-size: 0.72rem;
-  color: #94a3b8;
 }
 
 .admin-pp-list-col--config {
-  align-items: stretch;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
 }
 
-.admin-pp-list-config {
+.admin-pp-list-config-summary {
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.22rem;
-  width: 100%;
-}
-
-.admin-pp-list-config-row {
-  display: grid;
-  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
-  gap: 0.35rem;
-  align-items: baseline;
-  font-size: 0.72rem;
-  line-height: 1.35;
-}
-
-.admin-pp-list-config-row dt {
-  margin: 0;
-  color: #94a3b8;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.admin-pp-list-config-row dd {
-  margin: 0;
+  font-size: 0.8125rem;
   color: #334155;
-  font-weight: 500;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   word-break: break-word;
 }
 

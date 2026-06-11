@@ -156,37 +156,16 @@ function formatDurationLabel(value: number | null, unit: PromotionRow['campaignD
   return `${value} 天`
 }
 
-function formatConfigLines(item: PromotionRow): { label: string; value: string }[] {
-  const lines: { label: string; value: string }[] = [
-    { label: '推广目标', value: formatTargetLabel(item) },
-    {
-      label: '投放地区',
-      value: item.targetRegion ? (REGION_LABEL[item.targetRegion] ?? item.targetRegion) : '—',
-    },
-    {
-      label: '目标受众',
-      value: item.targetAudience
-        ? (AUDIENCE_LABEL[item.targetAudience] ?? item.targetAudience)
-        : '—',
-    },
-    {
-      label: '投放时长',
-      value: formatDurationLabel(item.campaignDurationValue, item.campaignDurationUnit),
-    },
-  ]
-  if (item.presetImpressions != null) {
-    lines.push({
-      label: '曝光 / 点击 / 进店',
-      value: `${item.presetImpressions.toLocaleString()} / ${(item.presetClicks ?? 0).toLocaleString()} / ${(item.presetVisits ?? 0).toLocaleString()}`,
-    })
+function formatConfigSummary(item: PromotionRow): string {
+  const parts: string[] = [formatTargetLabel(item)]
+  if (item.targetRegion) {
+    parts.push(REGION_LABEL[item.targetRegion] ?? item.targetRegion)
   }
-  if (item.campaignStartAt) {
-    lines.push({
-      label: '投放时段',
-      value: `${formatDateTime(item.campaignStartAt)} — ${formatDateTime(item.campaignEndAt)}`,
-    })
+  const duration = formatDurationLabel(item.campaignDurationValue, item.campaignDurationUnit)
+  if (duration !== '—') {
+    parts.push(duration)
   }
-  return lines
+  return parts.join(' · ')
 }
 
 function formatRemainingTime(remainingMs: number, isSettling: boolean) {
@@ -312,7 +291,7 @@ function PromotionListItem({
   onEnd: () => void
 }) {
   const name = shopDisplayName(item)
-  const configLines = formatConfigLines(item)
+  const configSummary = formatConfigSummary(item)
 
   return (
     <article
@@ -328,21 +307,15 @@ function PromotionListItem({
       }}
     >
       <div className="admin-pp-list-col admin-pp-list-col--shop">
-        <div className="admin-pp-list-shop-main">
-          <ShopAvatar name={name} logo={item.shopLogo} size="sm" />
-          <div className="admin-pp-list-shop-copy">
-            <strong className="admin-pp-list-shop-name">{name}</strong>
-            <code className="admin-pp-list-shop-id">{item.shopId}</code>
-          </div>
+        <ShopAvatar name={name} logo={item.shopLogo} size="sm" />
+        <div className="admin-pp-list-shop-copy">
+          <strong className="admin-pp-list-shop-name">{name}</strong>
+          <code className="admin-pp-list-shop-id">{item.shopId}</code>
         </div>
-        <span className="admin-pp-list-owner">
-          店主 {item.ownerAccount?.trim() || '—'}
-        </span>
       </div>
 
       <div className="admin-pp-list-col admin-pp-list-col--status">
         <StatusBadge status={item.status} />
-        <time className="admin-pp-list-time">{formatDateTime(item.createdAt)}</time>
       </div>
 
       <div className="admin-pp-list-col admin-pp-list-col--channel">
@@ -350,14 +323,9 @@ function PromotionListItem({
       </div>
 
       <div className="admin-pp-list-col admin-pp-list-col--config">
-        <dl className="admin-pp-list-config">
-          {configLines.map((line) => (
-            <div key={line.label} className="admin-pp-list-config-row">
-              <dt>{line.label}</dt>
-              <dd>{line.value}</dd>
-            </div>
-          ))}
-        </dl>
+        <p className="admin-pp-list-config-summary" title={configSummary}>
+          {configSummary}
+        </p>
       </div>
 
       <div className="admin-pp-list-col admin-pp-list-col--budget">
