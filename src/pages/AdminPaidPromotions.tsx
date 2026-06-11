@@ -249,10 +249,21 @@ const AdminPaidPromotions: React.FC = () => {
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (recordSearch.trim()) params.set('search', recordSearch.trim())
       const query = params.toString()
-      const res = await api.get<{ list: PromotionRecordItem[] }>(
-        `/api/admin/paid-promotions/records${query ? `?${query}` : ''}`,
-      )
-      setRecords(Array.isArray(res.list) ? res.list : [])
+      try {
+        const res = await api.get<{ list: PromotionRecordItem[] }>(
+          `/api/admin/paid-promotions/records${query ? `?${query}` : ''}`,
+        )
+        setRecords(Array.isArray(res.list) ? res.list : [])
+      } catch (recordsError) {
+        const legacyRes = await api.get<{ list: PromotionRow[] }>(
+          `/api/admin/paid-promotions${query ? `?${query}` : ''}`,
+        )
+        const legacyList = Array.isArray(legacyRes.list) ? legacyRes.list : []
+        setRecords(legacyList.map((promotion) => ({ promotion, metricsSummary: null })))
+        if (legacyList.length === 0 && recordsError) {
+          throw recordsError
+        }
+      }
     } catch (e) {
       loadError(e, '加载推广记录失败')
       setRecords([])
