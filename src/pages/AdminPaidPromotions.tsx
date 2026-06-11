@@ -132,7 +132,7 @@ const AdminPaidPromotions: React.FC = () => {
     durationUnit: 'day' as 'minute' | 'hour' | 'day',
     budgetTotal: '',
     impressions: '',
-    clickRate: '',
+    clicks: '',
     visits: '',
   })
   const [shopSearchInput, setShopSearchInput] = useState('')
@@ -164,15 +164,12 @@ const AdminPaidPromotions: React.FC = () => {
   }, [loadError, statusFilter])
 
   const syncCampaignConfigFromPromotion = useCallback((promotion: PromotionRow) => {
-    const clicks = promotion.presetClicks ?? 0
-    const impressions = promotion.presetImpressions ?? 0
-    const clickRate = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : ''
     setCampaignConfig({
       durationValue: String(promotion.campaignDurationValue ?? promotion.campaignDurationDays ?? 7),
       durationUnit: promotion.campaignDurationUnit ?? 'day',
       budgetTotal: promotion.budgetTotal != null ? String(promotion.budgetTotal) : '',
       impressions: promotion.presetImpressions != null ? String(promotion.presetImpressions) : '',
-      clickRate,
+      clicks: promotion.presetClicks != null ? String(promotion.presetClicks) : '',
       visits: promotion.presetVisits != null ? String(promotion.presetVisits) : '',
     })
   }, [])
@@ -317,7 +314,7 @@ const AdminPaidPromotions: React.FC = () => {
     durationUnit: campaignConfig.durationUnit,
     budgetTotal: Number(campaignConfig.budgetTotal),
     impressions: Number(campaignConfig.impressions),
-    clickRate: Number(campaignConfig.clickRate),
+    clicks: Number(campaignConfig.clicks),
     visits: Number(campaignConfig.visits),
   })
 
@@ -658,14 +655,12 @@ const AdminPaidPromotions: React.FC = () => {
                     />
                   </label>
                   <label className="admin-field">
-                    <span>点击率 (%)</span>
+                    <span>总点击</span>
                     <input
                       type="number"
                       min={0}
-                      max={100}
-                      step="0.1"
-                      value={campaignConfig.clickRate}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, clickRate: e.target.value }))}
+                      value={campaignConfig.clicks}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, clicks: e.target.value }))}
                     />
                   </label>
                   <label className="admin-field">
