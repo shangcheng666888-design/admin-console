@@ -29,8 +29,26 @@ interface PromotionRow {
   presetRevenue: number | null
   campaignStartAt: string | null
   campaignEndAt: string | null
+  merchantConfirmedAt: string | null
   activatedAt: string | null
   updatedAt: string
+}
+
+function needsCampaignConfig(promotion: PromotionRow): boolean {
+  if (promotion.status === 'awaiting_launch') return true
+  if (
+    promotion.status === 'active' &&
+    promotion.merchantConfirmedAt &&
+    !promotion.campaignStartAt &&
+    promotion.targetType
+  ) {
+    return true
+  }
+  return false
+}
+
+function hasLaunchedCampaign(promotion: PromotionRow): boolean {
+  return Boolean(promotion.campaignStartAt) || promotion.status === 'completed'
 }
 
 interface MetricPoint {
@@ -520,7 +538,16 @@ const AdminPaidPromotions: React.FC = () => {
                       </td>
                       <td>
                         <div className="admin-table-actions">
-                          {item.status === 'active' && (
+                          {needsCampaignConfig(item) ? (
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--sm admin-btn--primary"
+                              onClick={() => setSelectedId(item.id)}
+                            >
+                              配置投放
+                            </button>
+                          ) : null}
+                          {item.status === 'active' && hasLaunchedCampaign(item) && (
                             <button
                               type="button"
                               className="admin-btn admin-btn--sm"
@@ -529,7 +556,7 @@ const AdminPaidPromotions: React.FC = () => {
                               暂停
                             </button>
                           )}
-                          {item.status === 'active' && (
+                          {item.status === 'active' && hasLaunchedCampaign(item) && (
                             <button
                               type="button"
                               className="admin-btn admin-btn--sm admin-btn--ghost"
@@ -579,7 +606,11 @@ const AdminPaidPromotions: React.FC = () => {
                 {selected.adminNote ? <div>备注：{selected.adminNote}</div> : null}
               </div>
 
-              {selected.status === 'awaiting_launch' ? (
+              {needsCampaignConfig(selected) ? (
+                <div className="admin-paid-promotions-config-panel">
+                  <p className="admin-paid-promotions-config-hint">
+                    商家已确认推广方案，请填写投放参数后点击「开启推广」。
+                  </p>
                 <div className="admin-paid-promotions-config-grid">
                   <label className="admin-field">
                     <span>投放时长（天）</span>
@@ -651,18 +682,19 @@ const AdminPaidPromotions: React.FC = () => {
                   </label>
                   <button
                     type="button"
-                    className="admin-btn admin-btn--primary"
+                    className="admin-btn admin-btn--primary admin-paid-promotions-launch-btn"
                     onClick={handleLaunch}
                     disabled={launching}
                   >
                     {launching ? '开启中…' : '开启推广'}
                   </button>
                 </div>
+                </div>
               ) : selected.status === 'pending' ? (
                 <p className="admin-paid-promotions-placeholder">
                   等待商家在仪表盘选择推广目标、地区与受众并确认。
                 </p>
-              ) : selected.status === 'active' || selected.status === 'completed' ? (
+              ) : (selected.status === 'active' || selected.status === 'completed') && hasLaunchedCampaign(selected) ? (
                 <>
                   {metricsSummary ? (
                     <div className="admin-paid-promotions-live-summary">

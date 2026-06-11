@@ -25518,11 +25518,34 @@ button {
   color: #4338ca;
 }
 
+.admin-paid-promotions-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-paid-promotions-config-hint {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
 .admin-paid-promotions-config-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   align-items: end;
+}
+
+.admin-paid-promotions-launch-btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-width: 140px;
 }
 
 .admin-paid-promotions-live-summary {
