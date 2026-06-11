@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { api } from '../api/client'
+import { api, apiBase } from '../api/client'
 import { useAdminToast } from '../hooks/useAdminToast'
 import { useAdminEditConfirm } from '../context/AdminEditConfirmContext'
 import AdminLoadingState from '../components/admin/AdminLoadingState'
@@ -12,6 +12,7 @@ interface PromotionRow {
   id: number
   shopId: string
   shopName: string | null
+  shopLogo: string | null
   ownerAccount: string | null
   channel: PaidChannel
   status: PromoStatus
@@ -68,8 +69,20 @@ interface MetricPoint {
 interface ShopSearchResult {
   id: string
   name: string
+  logo?: string | null
   ownerAccount?: string
   status?: string
+}
+
+function resolveShopLogoUrl(url: string | null | undefined): string {
+  if (!url || typeof url !== 'string') return ''
+  const value = url.trim()
+  if (!value || value.startsWith('http://') || value.startsWith('https://')) return value
+  return apiBase ? `${apiBase.replace(/\/$/, '')}${value.startsWith('/') ? '' : '/'}${value}` : value
+}
+
+function shopDisplayName(item: Pick<PromotionRow, 'shopName' | 'shopId'>): string {
+  return item.shopName ?? item.shopId
 }
 
 const CHANNEL_OPTIONS: { value: PaidChannel; label: string }[] = [
@@ -119,25 +132,6 @@ function formatTargetLabel(item: PromotionRow): string {
   return '待商家选择'
 }
 
-function formatMerchantConfig(item: PromotionRow): string {
-  const parts: string[] = [formatTargetLabel(item)]
-  if (item.targetRegion) parts.push(REGION_LABEL[item.targetRegion] ?? item.targetRegion)
-  if (item.targetAudience) parts.push(AUDIENCE_LABEL[item.targetAudience] ?? item.targetAudience)
-  return parts.join(' · ')
-}
-
-function formatCampaignConfig(item: PromotionRow): string {
-  if (!item.campaignStartAt && item.budgetTotal == null) return '—'
-  const parts: string[] = []
-  if (item.campaignDurationValue) {
-    parts.push(formatDurationLabel(item.campaignDurationValue, item.campaignDurationUnit))
-  }
-  if (item.budgetTotal != null) parts.push(`$${item.budgetTotal.toFixed(2)}`)
-  if (item.presetImpressions != null) parts.push(`${item.presetImpressions.toLocaleString()} 曝光`)
-  if (item.presetClicks != null) parts.push(`${item.presetClicks.toLocaleString()} 点击`)
-  if (item.presetVisits != null) parts.push(`${item.presetVisits.toLocaleString()} 进店`)
-  return parts.join(' · ')
-}
 
 function formatDateLabel(date: string): string {
   const d = new Date(`${date}T00:00:00`)
@@ -195,6 +189,132 @@ function StatCard({
       <span className="admin-pp-stat-value">{value.toLocaleString()}</span>
       <span className="admin-pp-stat-label">{label}</span>
     </div>
+  )
+}
+
+function ShopAvatar({
+  name,
+  logo,
+  size = 'md',
+}: {
+  name: string
+  logo?: string | null
+  size?: 'sm' | 'md' | 'lg'
+}) {
+  const url = resolveShopLogoUrl(logo)
+  const initial = (name || '?').slice(0, 1).toUpperCase()
+  return (
+    <span className={`admin-pp-shop-avatar admin-pp-shop-avatar--${size}`} aria-hidden="true">
+      {url ? <img src={url} alt="" /> : <span>{initial}</span>}
+    </span>
+  )
+}
+
+function PromotionListItem({
+  item,
+  metricsSummary,
+  selected,
+  onSelect,
+  onConfigure,
+  onPause,
+  onEnd,
+}: {
+  item: PromotionRow
+  metricsSummary: PromotionRecordItem['metricsSummary']
+  selected: boolean
+  onSelect: () => void
+  onConfigure: () => void
+  onPause: () => void
+  onEnd: () => void
+}) {
+  const totals = metricsSummary?.totals
+  const name = shopDisplayName(item)
+
+  return (
+    <article
+      className={`admin-pp-list-item${selected ? ' admin-pp-list-item--active' : ''}`}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onSelect()
+        }
+      }}
+    >
+      <div className="admin-pp-list-col admin-pp-list-col--shop">
+        <ShopAvatar name={name} logo={item.shopLogo} size="lg" />
+        <div className="admin-pp-list-shop-copy">
+          <strong className="admin-pp-list-shop-name">{name}</strong>
+          <code className="admin-pp-list-shop-id">{item.shopId}</code>
+          <span className="admin-pp-list-owner">
+            店主 {item.ownerAccount?.trim() || '—'}
+          </span>
+        </div>
+      </div>
+
+      <div className="admin-pp-list-col admin-pp-list-col--status">
+        <StatusBadge status={item.status} />
+        <ChannelBadge channel={item.channel} />
+        <time className="admin-pp-list-time">{formatDateTime(item.createdAt)}</time>
+      </div>
+
+      <div className="admin-pp-list-col admin-pp-list-col--config">
+        <span className="admin-pp-list-tag">{formatTargetLabel(item)}</span>
+        {item.targetRegion ? (
+          <span className="admin-pp-list-tag admin-pp-list-tag--muted">
+            {REGION_LABEL[item.targetRegion] ?? item.targetRegion}
+          </span>
+        ) : null}
+        {item.budgetTotal != null ? (
+          <span className="admin-pp-list-tag admin-pp-list-tag--budget">
+            ${item.budgetTotal.toFixed(2)}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="admin-pp-list-col admin-pp-list-col--metrics">
+        {totals ? (
+          <>
+            <div className="admin-pp-list-metric">
+              <em>进店</em>
+              <strong>{totals.visits.toLocaleString()}</strong>
+            </div>
+            <div className="admin-pp-list-metric">
+              <em>消耗</em>
+              <strong>${totals.spend.toFixed(2)}</strong>
+            </div>
+          </>
+        ) : (
+          <span className="admin-pp-list-metrics-empty">暂无投放数据</span>
+        )}
+      </div>
+
+      <div
+        className="admin-pp-list-col admin-pp-list-col--actions"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="admin-pp-list-action" onClick={onSelect}>
+          详情
+        </button>
+        {needsCampaignConfig(item) ? (
+          <button type="button" className="admin-pp-list-action admin-pp-list-action--primary" onClick={onConfigure}>
+            配置
+          </button>
+        ) : null}
+        {item.status === 'active' && hasLaunchedCampaign(item) ? (
+          <>
+            <button type="button" className="admin-pp-list-action" onClick={onPause}>
+              暂停
+            </button>
+            <button type="button" className="admin-pp-list-action admin-pp-list-action--ghost" onClick={onEnd}>
+              结束
+            </button>
+          </>
+        ) : null}
+      </div>
+    </article>
   )
 }
 
@@ -555,7 +675,7 @@ const AdminPaidPromotions: React.FC = () => {
           <StatCard label="投放中" value={pageStats.running} tone="emerald" />
           <StatCard label="待开启" value={pageStats.awaiting} tone="sky" />
           <StatCard label="待商家配置" value={pageStats.pending} tone="amber" />
-          <StatCard label="全部记录" value={pageStats.total} tone="indigo" />
+          <StatCard label="全部列表" value={pageStats.total} tone="indigo" />
         </div>
       </header>
 
@@ -602,12 +722,18 @@ const AdminPaidPromotions: React.FC = () => {
               return (
                 <article key={promo.id} className="admin-paid-promotions-running-card">
                   <header className="admin-paid-promotions-running-card-head">
-                    <div>
-                      <div className="admin-pp-running-shop-row">
-                        <strong>{promo.shopName ?? promo.shopId}</strong>
-                        <ChannelBadge channel={promo.channel} />
+                    <div className="admin-pp-running-head-shop">
+                      <ShopAvatar name={shopDisplayName(promo)} logo={promo.shopLogo} size="md" />
+                      <div>
+                        <div className="admin-pp-running-shop-row">
+                          <strong>{shopDisplayName(promo)}</strong>
+                          <ChannelBadge channel={promo.channel} />
+                        </div>
+                        <span className="admin-paid-promotions-running-card-sub">
+                          {promo.shopId}
+                          {promo.ownerAccount ? ` · 店主 ${promo.ownerAccount}` : ''}
+                        </span>
                       </div>
-                      <span className="admin-paid-promotions-running-card-sub">{promo.shopId}</span>
                     </div>
                     <span
                       className={`admin-paid-promotions-running-timer${item.isSettling ? ' admin-paid-promotions-running-timer--due' : ''}`}
@@ -730,21 +856,21 @@ const AdminPaidPromotions: React.FC = () => {
         )}
       </section>
 
-      <div className="admin-pp-workspace">
-        <aside className="admin-pp-sidebar">
-          <section className="admin-pp-panel admin-pp-panel--create">
-            <div className="admin-pp-panel-head admin-pp-panel-head--compact">
-              <div>
-                <h2 className="admin-pp-panel-title">开启付费推广</h2>
-                <p className="admin-pp-panel-desc">为店铺创建推广资格，商家确认目标后由您开启投放。</p>
-              </div>
-            </div>
-        <div className="admin-paid-promotions-shop-search">
-          <label className="admin-field admin-field--search">
-            <span>搜索店铺</span>
-            <div className="admin-paid-promotions-search-row">
+      <section className="admin-pp-panel admin-pp-panel--create">
+        <div className="admin-pp-panel-head">
+          <div>
+            <h2 className="admin-pp-panel-title">开启付费推广</h2>
+            <p className="admin-pp-panel-desc">先选定店铺，再选择渠道并创建推广资格，商家确认目标后由您开启投放。</p>
+          </div>
+        </div>
+
+        <div className="admin-pp-create-layout">
+          <div className="admin-pp-create-step">
+            <span className="admin-pp-create-step-label">步骤 1 · 选择店铺</span>
+            <div className="admin-pp-create-search">
               <input
                 type="text"
+                className="admin-pp-create-search-input"
                 value={shopSearchInput}
                 onChange={(e) => setShopSearchInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -753,7 +879,7 @@ const AdminPaidPromotions: React.FC = () => {
                     searchShops()
                   }
                 }}
-                placeholder="输入店铺 ID 或店铺名称"
+                placeholder="输入店铺名称或店铺 ID"
               />
               <button
                 type="button"
@@ -764,251 +890,169 @@ const AdminPaidPromotions: React.FC = () => {
                 {shopSearchLoading ? '搜索中…' : '搜索'}
               </button>
             </div>
-          </label>
 
-          {shopSearchResults.length > 0 ? (
-            <ul className="admin-paid-promotions-shop-results">
-              {shopSearchResults.map((shop) => (
-                <li key={shop.id}>
-                  <button
-                    type="button"
-                    className="admin-paid-promotions-shop-result"
-                    onClick={() => selectShop(shop)}
-                  >
-                    <span className="admin-paid-promotions-shop-result-name">{shop.name}</span>
-                    <span className="admin-paid-promotions-shop-result-meta">
-                      {shop.id}
-                      {shop.ownerAccount ? ` · 店主 ${shop.ownerAccount}` : ''}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+            {shopSearchResults.length > 0 ? (
+              <ul className="admin-pp-create-results">
+                {shopSearchResults.map((shop) => (
+                  <li key={shop.id}>
+                    <button
+                      type="button"
+                      className={`admin-pp-create-result${selectedShop?.id === shop.id ? ' admin-pp-create-result--active' : ''}`}
+                      onClick={() => selectShop(shop)}
+                    >
+                      <ShopAvatar name={shop.name} logo={shop.logo} size="md" />
+                      <span className="admin-pp-create-result-copy">
+                        <strong>{shop.name}</strong>
+                        <code>{shop.id}</code>
+                        {shop.ownerAccount ? <em>店主 {shop.ownerAccount}</em> : null}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="admin-pp-create-hint">搜索后将展示匹配店铺，点击即可选中。</p>
+            )}
+          </div>
 
-          {selectedShop ? (
-            <div className="admin-paid-promotions-selected-shop">
-              <div>
-                <span className="admin-paid-promotions-selected-shop-label">已选店铺</span>
-                <strong>{selectedShop.name}</strong>
-                <span className="admin-paid-promotions-selected-shop-id">{selectedShop.id}</span>
+          <div className="admin-pp-create-step admin-pp-create-step--config">
+            <span className="admin-pp-create-step-label">步骤 2 · 配置并创建</span>
+
+            {selectedShop ? (
+              <div className="admin-pp-create-selected">
+                <ShopAvatar name={selectedShop.name} logo={selectedShop.logo} size="lg" />
+                <div className="admin-pp-create-selected-copy">
+                  <strong>{selectedShop.name}</strong>
+                  <code>{selectedShop.id}</code>
+                  {selectedShop.ownerAccount ? <span>店主 {selectedShop.ownerAccount}</span> : null}
+                </div>
+                <button type="button" className="admin-pp-create-clear" onClick={clearSelectedShop}>
+                  更换
+                </button>
               </div>
-              <button type="button" className="admin-btn admin-btn--sm admin-btn--ghost" onClick={clearSelectedShop}>
-                重新选择
+            ) : (
+              <div className="admin-pp-create-selected admin-pp-create-selected--empty">
+                <span>请先在左侧选择一家店铺</span>
+              </div>
+            )}
+
+            <div className="admin-pp-create-fields">
+              <div className="admin-pp-create-field">
+                <span className="admin-pp-create-field-label">推广渠道</span>
+                <div className="admin-pp-channel-picker">
+                  {CHANNEL_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`admin-pp-channel-option admin-pp-channel-option--${opt.value}${createForm.channel === opt.value ? ' admin-pp-channel-option--active' : ''}`}
+                      onClick={() => setCreateForm((prev) => ({ ...prev, channel: opt.value }))}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="admin-pp-create-field">
+                <span className="admin-pp-create-field-label">备注（可选）</span>
+                <input
+                  type="text"
+                  className="admin-pp-create-note"
+                  value={createForm.adminNote}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, adminNote: e.target.value }))}
+                  placeholder="例如：TikTok 套餐 A"
+                />
+              </label>
+
+              <button
+                type="button"
+                className="admin-btn admin-btn--primary admin-pp-create-submit"
+                onClick={handleCreate}
+                disabled={creating || !selectedShop}
+              >
+                {creating ? '创建中…' : '创建推广资格'}
               </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-pp-panel admin-pp-panel--list">
+        <div className="admin-pp-list-head">
+          <div>
+            <h2 className="admin-pp-panel-title">推广列表</h2>
+            <p className="admin-pp-panel-desc">展示店铺头像、名称、ID 与店主账号，点击行或「详情」打开抽屉处理。</p>
+          </div>
+          <div className="admin-pp-list-toolbar">
+            <input
+              type="search"
+              className="admin-pp-list-search"
+              value={recordSearchInput}
+              onChange={(e) => setRecordSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  setRecordSearch(recordSearchInput.trim())
+                }
+              }}
+              placeholder="搜索店铺 / 店主账号"
+            />
+            <button
+              type="button"
+              className="admin-btn admin-btn--sm admin-btn--primary"
+              onClick={() => setRecordSearch(recordSearchInput.trim())}
+            >
+              搜索
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-pp-status-tabs" role="tablist" aria-label="推广状态筛选">
+          {statusFilterOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === opt.value}
+              className={`admin-pp-status-tab${statusFilter === opt.value ? ' admin-pp-status-tab--active' : ''}`}
+              onClick={() => setStatusFilter(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="admin-pp-list-head-row" aria-hidden="true">
+          <span>店铺信息</span>
+          <span>状态 / 渠道</span>
+          <span>推广配置</span>
+          <span>效果</span>
+          <span>操作</span>
+        </div>
+
+        <div className="admin-pp-list-body">
+          {records.length === 0 ? (
+            <div className="admin-pp-empty">
+              <span className="admin-pp-empty-icon" aria-hidden="true">☰</span>
+              <p>暂无推广列表</p>
+              <span className="admin-pp-empty-hint">创建推广资格后，将在此展示全部店铺推广</span>
             </div>
           ) : (
-            <p className="admin-paid-promotions-shop-hint">搜索并选择店铺后，再选择推广渠道并开启。</p>
+            records.map(({ promotion: item, metricsSummary }) => (
+              <PromotionListItem
+                key={item.id}
+                item={item}
+                metricsSummary={metricsSummary}
+                selected={selectedId === item.id}
+                onSelect={() => setSelectedId(item.id)}
+                onConfigure={() => setSelectedId(item.id)}
+                onPause={() => updateStatus(item.id, 'paused')}
+                onEnd={() => updateStatus(item.id, 'ended')}
+              />
+            ))
           )}
         </div>
-
-        <div className="admin-paid-promotions-create-grid">
-          <label className="admin-field">
-            <span>推广渠道</span>
-            <select
-              value={createForm.channel}
-              onChange={(e) =>
-                setCreateForm((prev) => ({ ...prev, channel: e.target.value as PaidChannel }))
-              }
-            >
-              {CHANNEL_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="admin-field admin-field--wide">
-            <span>备注（可选）</span>
-            <input
-              type="text"
-              value={createForm.adminNote}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, adminNote: e.target.value }))}
-              placeholder="例如：TikTok 套餐 A，预算 $500"
-            />
-          </label>
-          <button
-            type="button"
-            className="admin-btn admin-btn--primary"
-            onClick={handleCreate}
-            disabled={creating || !selectedShop}
-          >
-            {creating ? '创建中…' : '创建推广资格'}
-          </button>
-        </div>
-          </section>
-        </aside>
-
-        <div className="admin-pp-main">
-          <section className="admin-pp-panel admin-pp-panel--records">
-          <div className="admin-paid-promotions-list-head">
-            <div>
-              <h2 className="admin-pp-panel-title">推广记录</h2>
-              <p className="admin-paid-promotions-records-desc">
-                会员配置、投放参数与实际效果一览。
-              </p>
-            </div>
-            <div className="admin-paid-promotions-records-filters">
-              <input
-                type="search"
-                className="admin-paid-promotions-records-search"
-                value={recordSearchInput}
-                onChange={(e) => setRecordSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    setRecordSearch(recordSearchInput.trim())
-                  }
-                }}
-                placeholder="搜索店铺 / 会员账号"
-              />
-              <button
-                type="button"
-                className="admin-btn admin-btn--sm admin-btn--primary"
-                onClick={() => setRecordSearch(recordSearchInput.trim())}
-              >
-                搜索
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-pp-status-tabs" role="tablist" aria-label="推广状态筛选">
-            {statusFilterOptions.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                role="tab"
-                aria-selected={statusFilter === opt.value}
-                className={`admin-pp-status-tab${statusFilter === opt.value ? ' admin-pp-status-tab--active' : ''}`}
-                onClick={() => setStatusFilter(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <div className="admin-paid-promotions-table-wrap admin-paid-promotions-records-table-wrap">
-            <table className="admin-table admin-paid-promotions-records-table">
-              <thead>
-                <tr>
-                  <th>创建时间</th>
-                  <th>店铺 / 会员</th>
-                  <th>渠道</th>
-                  <th>状态</th>
-                  <th>商家配置</th>
-                  <th>投放配置</th>
-                  <th>实际效果</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="admin-table-empty">
-                      暂无推广记录
-                    </td>
-                  </tr>
-                ) : (
-                  records.map(({ promotion: item, metricsSummary }) => {
-                    const totals = metricsSummary?.totals
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`admin-pp-record-row${selectedId === item.id ? ' admin-table-row--active' : ''}`}
-                        onClick={() => setSelectedId(item.id)}
-                      >
-                        <td>
-                          <div>{formatDateTime(item.createdAt)}</div>
-                          {item.merchantConfirmedAt ? (
-                            <div className="admin-table-sub">
-                              确认：{formatDateTime(item.merchantConfirmedAt)}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="admin-link-btn admin-pp-shop-link"
-                            onClick={() => setSelectedId(item.id)}
-                          >
-                            {item.shopName ?? item.shopId}
-                          </button>
-                          <div className="admin-table-sub">{item.shopId}</div>
-                          {item.ownerAccount ? (
-                            <div className="admin-pp-member-tag">会员 {item.ownerAccount}</div>
-                          ) : null}
-                        </td>
-                        <td><ChannelBadge channel={item.channel} /></td>
-                        <td><StatusBadge status={item.status} /></td>
-                        <td>
-                          <div className="admin-pp-cell-main">{formatMerchantConfig(item)}</div>
-                        </td>
-                        <td>
-                          <div className="admin-pp-cell-main">{formatCampaignConfig(item)}</div>
-                          {item.campaignStartAt ? (
-                            <div className="admin-table-sub">
-                              {formatDateTime(item.campaignStartAt)} — {formatDateTime(item.campaignEndAt)}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td>
-                          {metricsSummary && totals ? (
-                            <div className="admin-pp-metrics-chip">
-                              <strong>{totals.visits.toLocaleString()}</strong>
-                              <span>进店</span>
-                              <em>${totals.spend.toFixed(2)} 消耗</em>
-                            </div>
-                          ) : (
-                            <span className="admin-pp-muted">—</span>
-                          )}
-                        </td>
-                        <td onClick={(e) => e.stopPropagation()}>
-                          <div className="admin-table-actions">
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn--sm admin-btn--ghost"
-                              onClick={() => setSelectedId(item.id)}
-                            >
-                              详情
-                            </button>
-                            {needsCampaignConfig(item) ? (
-                              <button
-                                type="button"
-                                className="admin-btn admin-btn--sm admin-btn--primary"
-                                onClick={() => setSelectedId(item.id)}
-                              >
-                                配置投放
-                              </button>
-                            ) : null}
-                            {item.status === 'active' && hasLaunchedCampaign(item) && (
-                              <button
-                                type="button"
-                                className="admin-btn admin-btn--sm"
-                                onClick={() => updateStatus(item.id, 'paused')}
-                              >
-                                暂停
-                              </button>
-                            )}
-                            {item.status === 'active' && hasLaunchedCampaign(item) && (
-                              <button
-                                type="button"
-                                className="admin-btn admin-btn--sm admin-btn--ghost"
-                                onClick={() => updateStatus(item.id, 'ended')}
-                              >
-                                结束
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          </section>
-        </div>
-      </div>
+      </section>
 
       {selected ? (
         <>
@@ -1043,18 +1087,16 @@ const AdminPaidPromotions: React.FC = () => {
 
             <div className="admin-pp-drawer-body">
               <div className="admin-pp-detail-header">
-                <div className="admin-pp-detail-avatar" aria-hidden="true">
-                  {(selected.shopName ?? selected.shopId).slice(0, 1).toUpperCase()}
-                </div>
+                <ShopAvatar name={shopDisplayName(selected)} logo={selected.shopLogo} size="lg" />
                 <div className="admin-pp-detail-header-main">
-                  <strong>{selected.shopName ?? selected.shopId}</strong>
+                  <strong>{shopDisplayName(selected)}</strong>
                   <div className="admin-pp-detail-header-tags">
                     <ChannelBadge channel={selected.channel} />
                     <StatusBadge status={selected.status} />
                   </div>
                   <div className="admin-pp-detail-header-meta">
-                    {selected.ownerAccount ? <span>会员 {selected.ownerAccount}</span> : null}
-                    <span>{selected.shopId}</span>
+                    <code>{selected.shopId}</code>
+                    {selected.ownerAccount ? <span>店主 {selected.ownerAccount}</span> : null}
                   </div>
                 </div>
               </div>
