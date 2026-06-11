@@ -21,7 +21,9 @@ interface PromotionRow {
   status: PromoStatus
   targetType: TargetType
   targetListingId: string | null
+  targetProductId: string | number | null
   targetProductTitle: string | null
+  targetProductImage: string | null
   targetRegion: string | null
   targetAudience: string | null
   adminNote: string | null
@@ -137,9 +139,16 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 function formatTargetLabel(item: PromotionRow): string {
-  if (item.targetType === 'product') return item.targetProductTitle ?? `商品 ${item.targetListingId ?? ''}`
+  if (item.targetType === 'product') return item.targetProductTitle ?? `商品 ${item.targetProductId ?? item.targetListingId ?? ''}`
   if (item.targetType === 'shop') return '整店推广'
   return '待商家选择'
+}
+
+function formatWarehouseProductId(item: Pick<PromotionRow, 'targetProductId' | 'targetListingId'>): string {
+  if (item.targetProductId != null && String(item.targetProductId).trim()) {
+    return String(item.targetProductId)
+  }
+  return item.targetListingId?.trim() || '—'
 }
 
 
@@ -1157,6 +1166,31 @@ const AdminPaidPromotions: React.FC = () => {
 
               <section className="admin-drawer-section">
                 <h3 className="admin-drawer-section-title">商家配置</h3>
+                {selected.targetType === 'product' ? (
+                  <div className="admin-pp-launch-product">
+                    {selected.targetProductImage ? (
+                      <img
+                        src={selected.targetProductImage}
+                        alt=""
+                        className="admin-pp-launch-product-img"
+                      />
+                    ) : (
+                      <span className="admin-pp-launch-product-img admin-pp-launch-product-img--empty">
+                        SKU
+                      </span>
+                    )}
+                    <div className="admin-pp-launch-product-copy">
+                      <span className="admin-pp-launch-product-label">推广商品</span>
+                      <strong className="admin-pp-launch-product-title">
+                        {selected.targetProductTitle ?? '—'}
+                      </strong>
+                      <div className="admin-pp-launch-product-id">
+                        <span>商品 ID</span>
+                        <code>{formatWarehouseProductId(selected)}</code>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 <dl className="admin-paid-promotions-config-dl admin-pp-drawer-dl">
                   <div>
                     <dt>推广目标</dt>
@@ -1217,15 +1251,16 @@ const AdminPaidPromotions: React.FC = () => {
                   <p className="admin-paid-promotions-config-hint">
                     商家已确认推广方案，请填写投放参数后点击「开启推广」。
                   </p>
-                  <div className="admin-paid-promotions-config-grid admin-pp-drawer-config-grid">
-                    <label className="admin-field admin-field--duration">
+                  <div className="admin-pp-launch-config-grid">
+                    <label className="admin-pp-launch-field admin-pp-launch-field--duration">
                       <span>投放时长</span>
-                      <div className="admin-paid-promotions-duration-row">
+                      <div className="admin-pp-launch-duration">
                         <input
                           type="number"
                           min={1}
                           max={durationMax}
                           value={campaignConfig.durationValue}
+                          placeholder="7"
                           onChange={(e) => setCampaignConfig((prev) => ({ ...prev, durationValue: e.target.value }))}
                         />
                         <select
@@ -1243,43 +1278,55 @@ const AdminPaidPromotions: React.FC = () => {
                         </select>
                       </div>
                     </label>
-                    <label className="admin-field">
+                    <label className="admin-pp-launch-field">
                       <span>总预算 ($)</span>
                       <input
                         type="number"
                         min={0}
                         step="0.01"
+                        placeholder="0.00"
                         value={campaignConfig.budgetTotal}
                         onChange={(e) => setCampaignConfig((prev) => ({ ...prev, budgetTotal: e.target.value }))}
                       />
                     </label>
-                    <label className="admin-field">
-                      <span>总曝光</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={campaignConfig.impressions}
-                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, impressions: e.target.value }))}
-                      />
-                    </label>
-                    <label className="admin-field">
-                      <span>总点击</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={campaignConfig.clicks}
-                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, clicks: e.target.value }))}
-                      />
-                    </label>
-                    <label className="admin-field">
-                      <span>总进店</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={campaignConfig.visits}
-                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, visits: e.target.value }))}
-                      />
-                    </label>
+                    <div className="admin-pp-launch-metrics">
+                      <div className="admin-pp-launch-metrics-head">
+                        <span className="admin-pp-launch-metrics-title">投放指标</span>
+                        <span className="admin-pp-launch-metrics-sub">曝光、点击、进店总量</span>
+                      </div>
+                      <div className="admin-pp-launch-metrics-grid">
+                        <label className="admin-pp-launch-field">
+                          <span>总曝光</span>
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            value={campaignConfig.impressions}
+                            onChange={(e) => setCampaignConfig((prev) => ({ ...prev, impressions: e.target.value }))}
+                          />
+                        </label>
+                        <label className="admin-pp-launch-field">
+                          <span>总点击</span>
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            value={campaignConfig.clicks}
+                            onChange={(e) => setCampaignConfig((prev) => ({ ...prev, clicks: e.target.value }))}
+                          />
+                        </label>
+                        <label className="admin-pp-launch-field">
+                          <span>总进店</span>
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            value={campaignConfig.visits}
+                            onChange={(e) => setCampaignConfig((prev) => ({ ...prev, visits: e.target.value }))}
+                          />
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </section>
               ) : selected.status === 'pending' ? (
