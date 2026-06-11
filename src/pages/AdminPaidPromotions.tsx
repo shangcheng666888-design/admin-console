@@ -12,6 +12,7 @@ interface PromotionRow {
   id: number
   shopId: string
   shopName: string | null
+  ownerAccount: string | null
   channel: PaidChannel
   status: PromoStatus
   targetType: TargetType
@@ -33,6 +34,7 @@ interface PromotionRow {
   campaignEndAt: string | null
   merchantConfirmedAt: string | null
   activatedAt: string | null
+  createdAt: string
   updatedAt: string
 }
 
@@ -104,6 +106,39 @@ const AUDIENCE_LABEL: Record<string, string> = {
   high_intent: '高购买意向',
 }
 
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString()
+}
+
+function formatTargetLabel(item: PromotionRow): string {
+  if (item.targetType === 'product') return item.targetProductTitle ?? `商品 ${item.targetListingId ?? ''}`
+  if (item.targetType === 'shop') return '整店推广'
+  return '待商家选择'
+}
+
+function formatMerchantConfig(item: PromotionRow): string {
+  const parts: string[] = [formatTargetLabel(item)]
+  if (item.targetRegion) parts.push(REGION_LABEL[item.targetRegion] ?? item.targetRegion)
+  if (item.targetAudience) parts.push(AUDIENCE_LABEL[item.targetAudience] ?? item.targetAudience)
+  return parts.join(' · ')
+}
+
+function formatCampaignConfig(item: PromotionRow): string {
+  if (!item.campaignStartAt && item.budgetTotal == null) return '—'
+  const parts: string[] = []
+  if (item.campaignDurationValue) {
+    parts.push(formatDurationLabel(item.campaignDurationValue, item.campaignDurationUnit))
+  }
+  if (item.budgetTotal != null) parts.push(`$${item.budgetTotal.toFixed(2)}`)
+  if (item.presetImpressions != null) parts.push(`${item.presetImpressions.toLocaleString()} 曝光`)
+  if (item.presetClicks != null) parts.push(`${item.presetClicks.toLocaleString()} 点击`)
+  if (item.presetVisits != null) parts.push(`${item.presetVisits.toLocaleString()} 进店`)
+  return parts.join(' · ')
+}
+
 function formatDateLabel(date: string): string {
   const d = new Date(`${date}T00:00:00`)
   if (Number.isNaN(d.getTime())) return date
@@ -148,6 +183,17 @@ interface RunningCampaignItem {
   isSettling: boolean
 }
 
+interface PromotionRecordItem {
+  promotion: PromotionRow
+  metricsSummary: {
+    totals?: MetricPoint
+    presets?: MetricPoint
+    campaignProgress?: number
+    budgetProgress?: number
+    isCompleted?: boolean
+  } | null
+}
+
 const AdminPaidPromotions: React.FC = () => {
   const { loadError, actionSuccess, actionError } = useAdminToast()
   const { requestEditConfirm } = useAdminEditConfirm()
@@ -155,8 +201,10 @@ const AdminPaidPromotions: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [launching, setLaunching] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [list, setList] = useState<PromotionRow[]>([])
+  const [records, setRecords] = useState<PromotionRecordItem[]>([])
   const [statusFilter, setStatusFilter] = useState<'all' | PromoStatus>('all')
+  const [recordSearch, setRecordSearch] = useState('')
+  const [recordSearchInput, setRecordSearchInput] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [metrics, setMetrics] = useState<MetricPoint[]>([])
   const [metricsSummary, setMetricsSummary] = useState<{
@@ -185,23 +233,33 @@ const AdminPaidPromotions: React.FC = () => {
   const [runningLoading, setRunningLoading] = useState(false)
 
   const selected = useMemo(
-    () => list.find((item) => item.id === selectedId) ?? null,
-    [list, selectedId],
+    () => records.find((item) => item.promotion.id === selectedId)?.promotion ?? null,
+    [records, selectedId],
   )
 
-  const fetchList = useCallback(async () => {
+  const selectedRecord = useMemo(
+    () => records.find((item) => item.promotion.id === selectedId) ?? null,
+    [records, selectedId],
+  )
+
+  const fetchRecords = useCallback(async () => {
     setLoading(true)
     try {
-      const query = statusFilter === 'all' ? '' : `?status=${encodeURIComponent(statusFilter)}`
-      const res = await api.get<{ list: PromotionRow[] }>(`/api/admin/paid-promotions${query}`)
-      setList(Array.isArray(res.list) ? res.list : [])
+      const params = new URLSearchParams()
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (recordSearch.trim()) params.set('search', recordSearch.trim())
+      const query = params.toString()
+      const res = await api.get<{ list: PromotionRecordItem[] }>(
+        `/api/admin/paid-promotions/records${query ? `?${query}` : ''}`,
+      )
+      setRecords(Array.isArray(res.list) ? res.list : [])
     } catch (e) {
-      loadError(e, '加载付费推广列表失败')
-      setList([])
+      loadError(e, '加载推广记录失败')
+      setRecords([])
     } finally {
       setLoading(false)
     }
-  }, [loadError, statusFilter])
+  }, [loadError, statusFilter, recordSearch])
 
   const syncCampaignConfigFromPromotion = useCallback((promotion: PromotionRow) => {
     setCampaignConfig({
@@ -253,11 +311,11 @@ const AdminPaidPromotions: React.FC = () => {
   }, [loadError])
 
   useEffect(() => {
-    fetchList()
+    fetchRecords()
     fetchRunningCampaigns()
     const timer = window.setInterval(fetchRunningCampaigns, 10000)
     return () => window.clearInterval(timer)
-  }, [fetchList, fetchRunningCampaigns])
+  }, [fetchRecords, fetchRunningCampaigns])
 
   const searchShops = useCallback(async () => {
     const keyword = shopSearchInput.trim()
@@ -302,13 +360,13 @@ const AdminPaidPromotions: React.FC = () => {
   useEffect(() => {
     if (selectedId) {
       fetchMetrics(selectedId)
-      const item = list.find((row) => row.id === selectedId)
+      const item = records.find((row) => row.promotion.id === selectedId)?.promotion
       if (item) syncCampaignConfigFromPromotion(item)
     } else {
       setMetrics([])
       setMetricsSummary(null)
     }
-  }, [selectedId, fetchMetrics, list, syncCampaignConfigFromPromotion])
+  }, [selectedId, fetchMetrics, records, syncCampaignConfigFromPromotion])
 
   const performCreate = () => {
     if (!selectedShop?.id) return
@@ -325,7 +383,7 @@ const AdminPaidPromotions: React.FC = () => {
         setSelectedShop(null)
         setShopSearchInput('')
         setShopSearchResults([])
-        fetchList()
+        fetchRecords()
       })
       .catch((e) => actionError(e, '开启失败'))
       .finally(() => setCreating(false))
@@ -349,7 +407,7 @@ const AdminPaidPromotions: React.FC = () => {
       .patch(`/api/admin/paid-promotions/${id}`, { status })
       .then(() => {
         actionSuccess('状态已更新')
-        fetchList()
+        fetchRecords()
         fetchRunningCampaigns()
         if (selectedId === id) fetchMetrics(id)
       })
@@ -384,7 +442,7 @@ const AdminPaidPromotions: React.FC = () => {
       .post(`/api/admin/paid-promotions/${selectedId}/launch`, buildCampaignPayload())
       .then(() => {
         actionSuccess('推广已开启，系统将按设定智能消耗预算并释放数据')
-        fetchList()
+        fetchRecords()
         fetchRunningCampaigns()
         fetchMetrics(selectedId)
       })
@@ -407,7 +465,7 @@ const AdminPaidPromotions: React.FC = () => {
     })
   }
 
-  if (loading && list.length === 0) {
+  if (loading && records.length === 0) {
     return <AdminLoadingState variant="page" label="加载推广智能控" />
   }
 
@@ -695,105 +753,176 @@ const AdminPaidPromotions: React.FC = () => {
       <div className="admin-paid-promotions-layout">
         <section className="admin-card admin-paid-promotions-list">
           <div className="admin-paid-promotions-list-head">
-            <h2 className="admin-card-title">推广列表</h2>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | PromoStatus)}
-            >
-              <option value="all">全部状态</option>
-              {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <h2 className="admin-card-title">推广记录</h2>
+              <p className="admin-paid-promotions-records-desc">
+                查看各会员店铺的付费推广记录、商家配置与投放参数。
+              </p>
+            </div>
+            <div className="admin-paid-promotions-records-filters">
+              <input
+                type="search"
+                className="admin-paid-promotions-records-search"
+                value={recordSearchInput}
+                onChange={(e) => setRecordSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    setRecordSearch(recordSearchInput.trim())
+                  }
+                }}
+                placeholder="搜索店铺 / 会员账号"
+              />
+              <button
+                type="button"
+                className="admin-btn admin-btn--sm"
+                onClick={() => setRecordSearch(recordSearchInput.trim())}
+              >
+                搜索
+              </button>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | PromoStatus)}
+              >
+                <option value="all">全部状态</option>
+                {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="admin-paid-promotions-table-wrap">
-            <table className="admin-table">
+          <div className="admin-paid-promotions-table-wrap admin-paid-promotions-records-table-wrap">
+            <table className="admin-table admin-paid-promotions-records-table">
               <thead>
                 <tr>
-                  <th>店铺</th>
+                  <th>创建时间</th>
+                  <th>店铺 / 会员</th>
                   <th>渠道</th>
                   <th>状态</th>
-                  <th>推广目标</th>
+                  <th>商家配置</th>
+                  <th>投放配置</th>
+                  <th>实际效果</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                {list.length === 0 ? (
+                {records.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="admin-table-empty">
+                    <td colSpan={8} className="admin-table-empty">
                       暂无推广记录
                     </td>
                   </tr>
                 ) : (
-                  list.map((item) => (
-                    <tr
-                      key={item.id}
-                      className={selectedId === item.id ? 'admin-table-row--active' : ''}
-                    >
-                      <td>
-                        <button
-                          type="button"
-                          className="admin-link-btn"
-                          onClick={() => setSelectedId(item.id)}
-                        >
-                          {item.shopName ?? item.shopId}
-                        </button>
-                        <div className="admin-table-sub">{item.shopId}</div>
-                      </td>
-                      <td>{CHANNEL_OPTIONS.find((c) => c.value === item.channel)?.label ?? item.channel}</td>
-                      <td>
-                        <span className={`admin-badge admin-badge--${item.status}`}>
-                          {STATUS_LABEL[item.status]}
-                        </span>
-                      </td>
-                      <td>
-                        {item.targetType === 'product'
-                          ? item.targetProductTitle ?? `商品 ${item.targetListingId}`
-                          : item.targetType === 'shop'
-                            ? '整店推广'
-                            : '待商家选择'}
-                        {item.targetRegion ? (
-                          <div className="admin-table-sub">
-                            {REGION_LABEL[item.targetRegion] ?? item.targetRegion}
-                            {item.targetAudience ? ` · ${AUDIENCE_LABEL[item.targetAudience] ?? item.targetAudience}` : ''}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td>
-                        <div className="admin-table-actions">
-                          {needsCampaignConfig(item) ? (
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn--sm admin-btn--primary"
-                              onClick={() => setSelectedId(item.id)}
-                            >
-                              配置投放
-                            </button>
+                  records.map(({ promotion: item, metricsSummary }) => {
+                    const totals = metricsSummary?.totals
+                    const presets = metricsSummary?.presets
+                    return (
+                      <tr
+                        key={item.id}
+                        className={selectedId === item.id ? 'admin-table-row--active' : ''}
+                      >
+                        <td>
+                          <div>{formatDateTime(item.createdAt)}</div>
+                          {item.merchantConfirmedAt ? (
+                            <div className="admin-table-sub">
+                              确认：{formatDateTime(item.merchantConfirmedAt)}
+                            </div>
                           ) : null}
-                          {item.status === 'active' && hasLaunchedCampaign(item) && (
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn--sm"
-                              onClick={() => updateStatus(item.id, 'paused')}
-                            >
-                              暂停
-                            </button>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-link-btn"
+                            onClick={() => setSelectedId(item.id)}
+                          >
+                            {item.shopName ?? item.shopId}
+                          </button>
+                          <div className="admin-table-sub">{item.shopId}</div>
+                          {item.ownerAccount ? (
+                            <div className="admin-table-sub">会员 {item.ownerAccount}</div>
+                          ) : null}
+                        </td>
+                        <td>{CHANNEL_OPTIONS.find((c) => c.value === item.channel)?.label ?? item.channel}</td>
+                        <td>
+                          <span className={`admin-badge admin-badge--${item.status}`}>
+                            {STATUS_LABEL[item.status]}
+                          </span>
+                        </td>
+                        <td>
+                          <div>{formatMerchantConfig(item)}</div>
+                          {item.merchantConfirmedAt ? (
+                            <div className="admin-table-sub">
+                              确认于 {formatDateTime(item.merchantConfirmedAt)}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td>
+                          <div>{formatCampaignConfig(item)}</div>
+                          {item.campaignStartAt ? (
+                            <div className="admin-table-sub">
+                              {formatDateTime(item.campaignStartAt)} — {formatDateTime(item.campaignEndAt)}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td>
+                          {metricsSummary && totals ? (
+                            <>
+                              <div>
+                                曝光 {totals.impressions.toLocaleString()}
+                                {presets?.impressions ? ` / ${presets.impressions.toLocaleString()}` : ''}
+                              </div>
+                              <div className="admin-table-sub">
+                                点击 {totals.clicks.toLocaleString()} · 进店 {totals.visits.toLocaleString()} · $
+                                {totals.spend.toFixed(2)}
+                              </div>
+                            </>
+                          ) : (
+                            '—'
                           )}
-                          {item.status === 'active' && hasLaunchedCampaign(item) && (
+                        </td>
+                        <td>
+                          <div className="admin-table-actions">
                             <button
                               type="button"
                               className="admin-btn admin-btn--sm admin-btn--ghost"
-                              onClick={() => updateStatus(item.id, 'ended')}
+                              onClick={() => setSelectedId(item.id)}
                             >
-                              结束
+                              详情
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {needsCampaignConfig(item) ? (
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--sm admin-btn--primary"
+                                onClick={() => setSelectedId(item.id)}
+                              >
+                                配置投放
+                              </button>
+                            ) : null}
+                            {item.status === 'active' && hasLaunchedCampaign(item) && (
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--sm"
+                                onClick={() => updateStatus(item.id, 'paused')}
+                              >
+                                暂停
+                              </button>
+                            )}
+                            {item.status === 'active' && hasLaunchedCampaign(item) && (
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--sm admin-btn--ghost"
+                                onClick={() => updateStatus(item.id, 'ended')}
+                              >
+                                结束
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -801,7 +930,7 @@ const AdminPaidPromotions: React.FC = () => {
         </section>
 
         <section className="admin-card admin-paid-promotions-control">
-          <h2 className="admin-card-title">投放配置与智能消耗</h2>
+          <h2 className="admin-card-title">记录详情</h2>
           {!selected ? (
             <p className="admin-paid-promotions-placeholder">请从左侧选择一条推广记录</p>
           ) : (
@@ -814,21 +943,70 @@ const AdminPaidPromotions: React.FC = () => {
                     {STATUS_LABEL[selected.status]}
                   </span>
                 </div>
-                <div>
-                  推广目标：
-                  {selected.targetType === 'product'
-                    ? selected.targetProductTitle ?? `商品 ${selected.targetListingId}`
-                    : selected.targetType === 'shop'
-                      ? '整店推广'
-                      : '商家尚未选择'}
-                </div>
-                {selected.targetRegion ? (
+                {selected.ownerAccount ? <div>会员账号：{selected.ownerAccount}</div> : null}
+                <div>店铺 ID：{selected.shopId}</div>
+                <div>创建时间：{formatDateTime(selected.createdAt)}</div>
+                {selected.adminNote ? <div>管理员备注：{selected.adminNote}</div> : null}
+              </div>
+
+              <div className="admin-paid-promotions-config-detail">
+                <h3 className="admin-paid-promotions-config-detail-title">商家配置</h3>
+                <dl className="admin-paid-promotions-config-dl">
                   <div>
-                    地区 / 受众：{REGION_LABEL[selected.targetRegion] ?? selected.targetRegion}
-                    {selected.targetAudience ? ` · ${AUDIENCE_LABEL[selected.targetAudience] ?? selected.targetAudience}` : ''}
+                    <dt>推广目标</dt>
+                    <dd>{formatTargetLabel(selected)}</dd>
                   </div>
-                ) : null}
-                {selected.adminNote ? <div>备注：{selected.adminNote}</div> : null}
+                  <div>
+                    <dt>投放地区</dt>
+                    <dd>
+                      {selected.targetRegion
+                        ? REGION_LABEL[selected.targetRegion] ?? selected.targetRegion
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>目标受众</dt>
+                    <dd>
+                      {selected.targetAudience
+                        ? AUDIENCE_LABEL[selected.targetAudience] ?? selected.targetAudience
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>商家确认时间</dt>
+                    <dd>{formatDateTime(selected.merchantConfirmedAt)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="admin-paid-promotions-config-detail">
+                <h3 className="admin-paid-promotions-config-detail-title">投放配置</h3>
+                <dl className="admin-paid-promotions-config-dl">
+                  <div>
+                    <dt>投放时长</dt>
+                    <dd>{formatDurationLabel(selected.campaignDurationValue, selected.campaignDurationUnit)}</dd>
+                  </div>
+                  <div>
+                    <dt>总预算</dt>
+                    <dd>{selected.budgetTotal != null ? `$${selected.budgetTotal.toFixed(2)}` : '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>总曝光 / 点击 / 进店</dt>
+                    <dd>
+                      {selected.presetImpressions != null
+                        ? `${selected.presetImpressions.toLocaleString()} / ${(selected.presetClicks ?? 0).toLocaleString()} / ${(selected.presetVisits ?? 0).toLocaleString()}`
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>投放时段</dt>
+                    <dd>
+                      {selected.campaignStartAt
+                        ? `${formatDateTime(selected.campaignStartAt)} — ${formatDateTime(selected.campaignEndAt)}`
+                        : '尚未开启'}
+                    </dd>
+                  </div>
+                </dl>
               </div>
 
               {needsCampaignConfig(selected) ? (
@@ -913,12 +1091,24 @@ const AdminPaidPromotions: React.FC = () => {
                 <p className="admin-paid-promotions-placeholder">
                   等待商家在仪表盘选择推广目标、地区与受众并确认。
                 </p>
-              ) : (selected.status === 'active' || selected.status === 'completed') && hasLaunchedCampaign(selected) ? (
+              ) : hasLaunchedCampaign(selected) ? (
                 <>
-                  {metricsSummary ? (
+                  {metricsSummary || selectedRecord?.metricsSummary ? (
                     <div className="admin-paid-promotions-live-summary">
-                      <span>预算消耗：{Math.round((metricsSummary.budgetProgress ?? 0) * 100)}%</span>
-                      <span>投放进度：{Math.round((metricsSummary.campaignProgress ?? 0) * 100)}%</span>
+                      <span>
+                        预算消耗：
+                        {Math.round(
+                          ((metricsSummary ?? selectedRecord?.metricsSummary)?.budgetProgress ?? 0) * 100,
+                        )}
+                        %
+                      </span>
+                      <span>
+                        投放进度：
+                        {Math.round(
+                          ((metricsSummary ?? selectedRecord?.metricsSummary)?.campaignProgress ?? 0) * 100,
+                        )}
+                        %
+                      </span>
                     </div>
                   ) : null}
                   <div className="admin-paid-promotions-metrics-table-wrap">
