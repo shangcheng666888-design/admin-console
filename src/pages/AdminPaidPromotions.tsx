@@ -5,7 +5,7 @@ import { useAdminEditConfirm } from '../context/AdminEditConfirmContext'
 import AdminLoadingState from '../components/admin/AdminLoadingState'
 
 type PaidChannel = 'tiktok' | 'meta' | 'google' | 'other'
-type PromoStatus = 'pending' | 'active' | 'paused' | 'ended'
+type PromoStatus = 'pending' | 'awaiting_launch' | 'active' | 'paused' | 'ended' | 'completed'
 type TargetType = 'shop' | 'product' | null
 
 interface PromotionRow {
@@ -17,7 +17,18 @@ interface PromotionRow {
   targetType: TargetType
   targetListingId: string | null
   targetProductTitle: string | null
+  targetRegion: string | null
+  targetAudience: string | null
   adminNote: string | null
+  campaignDurationDays: number | null
+  budgetTotal: number | null
+  presetImpressions: number | null
+  presetClicks: number | null
+  presetVisits: number | null
+  presetOrders: number | null
+  presetRevenue: number | null
+  campaignStartAt: string | null
+  campaignEndAt: string | null
   activatedAt: string | null
   updatedAt: string
 }
@@ -47,20 +58,31 @@ const CHANNEL_OPTIONS: { value: PaidChannel; label: string }[] = [
 ]
 
 const STATUS_LABEL: Record<PromoStatus, string> = {
-  pending: '待开启',
+  pending: '待商家配置',
+  awaiting_launch: '待开启推广',
   active: '推广中',
   paused: '已暂停',
   ended: '已结束',
+  completed: '已完成',
 }
 
-const METRIC_FIELDS: { key: keyof MetricPoint; label: string; step?: string }[] = [
-  { key: 'impressions', label: '曝光' },
-  { key: 'clicks', label: '点击' },
-  { key: 'visits', label: '进店' },
-  { key: 'orders', label: '成交' },
-  { key: 'spend', label: '消耗 ($)', step: '0.01' },
-  { key: 'revenue', label: '成交额 ($)', step: '0.01' },
-]
+const REGION_LABEL: Record<string, string> = {
+  north_america: '北美',
+  europe: '欧洲',
+  southeast_asia: '东南亚',
+  middle_east: '中东',
+  latin_america: '拉美',
+  global: '全球',
+}
+
+const AUDIENCE_LABEL: Record<string, string> = {
+  all: '全部受众',
+  young_adults: '年轻群体 18-34',
+  women: '女性用户',
+  men: '男性用户',
+  parents: '家长群体',
+  high_intent: '高购买意向',
+}
 
 function formatDateLabel(date: string): string {
   const d = new Date(`${date}T00:00:00`)
@@ -69,16 +91,31 @@ function formatDateLabel(date: string): string {
 }
 
 const AdminPaidPromotions: React.FC = () => {
-  const { loadError, saveSuccess, saveError, actionSuccess, actionError } = useAdminToast()
+  const { loadError, actionSuccess, actionError } = useAdminToast()
   const { requestEditConfirm } = useAdminEditConfirm()
 
   const [loading, setLoading] = useState(true)
-  const [savingMetrics, setSavingMetrics] = useState(false)
+  const [launching, setLaunching] = useState(false)
   const [creating, setCreating] = useState(false)
   const [list, setList] = useState<PromotionRow[]>([])
   const [statusFilter, setStatusFilter] = useState<'all' | PromoStatus>('all')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [metrics, setMetrics] = useState<MetricPoint[]>([])
+  const [metricsSummary, setMetricsSummary] = useState<{
+    campaignProgress?: number
+    budgetProgress?: number
+    totals?: MetricPoint
+    presets?: MetricPoint
+  } | null>(null)
+  const [campaignConfig, setCampaignConfig] = useState({
+    durationDays: '7',
+    budgetTotal: '',
+    impressions: '',
+    clickRate: '',
+    visits: '',
+    orders: '',
+    revenue: '',
+  })
   const [shopSearchInput, setShopSearchInput] = useState('')
   const [shopSearchLoading, setShopSearchLoading] = useState(false)
   const [shopSearchResults, setShopSearchResults] = useState<ShopSearchResult[]>([])
@@ -107,15 +144,45 @@ const AdminPaidPromotions: React.FC = () => {
     }
   }, [loadError, statusFilter])
 
+  const syncCampaignConfigFromPromotion = useCallback((promotion: PromotionRow) => {
+    const clicks = promotion.presetClicks ?? 0
+    const impressions = promotion.presetImpressions ?? 0
+    const clickRate = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : ''
+    setCampaignConfig({
+      durationDays: String(promotion.campaignDurationDays ?? 7),
+      budgetTotal: promotion.budgetTotal != null ? String(promotion.budgetTotal) : '',
+      impressions: promotion.presetImpressions != null ? String(promotion.presetImpressions) : '',
+      clickRate,
+      visits: promotion.presetVisits != null ? String(promotion.presetVisits) : '',
+      orders: promotion.presetOrders != null ? String(promotion.presetOrders) : '',
+      revenue: promotion.presetRevenue != null ? String(promotion.presetRevenue) : '',
+    })
+  }, [])
+
   const fetchMetrics = useCallback(async (id: number) => {
     try {
-      const res = await api.get<{ series: MetricPoint[] }>(`/api/admin/paid-promotions/${id}/metrics`)
+      const res = await api.get<{
+        series: MetricPoint[]
+        campaignProgress?: number
+        budgetProgress?: number
+        totals?: MetricPoint
+        presets?: MetricPoint
+        promotion: PromotionRow
+      }>(`/api/admin/paid-promotions/${id}/metrics`)
       setMetrics(Array.isArray(res.series) ? res.series : [])
+      setMetricsSummary({
+        campaignProgress: res.campaignProgress,
+        budgetProgress: res.budgetProgress,
+        totals: res.totals,
+        presets: res.presets,
+      })
+      if (res.promotion) syncCampaignConfigFromPromotion(res.promotion)
     } catch (e) {
       loadError(e, '加载推广数据失败')
       setMetrics([])
+      setMetricsSummary(null)
     }
-  }, [loadError])
+  }, [loadError, syncCampaignConfigFromPromotion])
 
   useEffect(() => {
     fetchList()
@@ -162,9 +229,15 @@ const AdminPaidPromotions: React.FC = () => {
   }
 
   useEffect(() => {
-    if (selectedId) fetchMetrics(selectedId)
-    else setMetrics([])
-  }, [selectedId, fetchMetrics])
+    if (selectedId) {
+      fetchMetrics(selectedId)
+      const item = list.find((row) => row.id === selectedId)
+      if (item) syncCampaignConfigFromPromotion(item)
+    } else {
+      setMetrics([])
+      setMetricsSummary(null)
+    }
+  }, [selectedId, fetchMetrics, list, syncCampaignConfigFromPromotion])
 
   const performCreate = () => {
     if (!selectedShop?.id) return
@@ -173,11 +246,10 @@ const AdminPaidPromotions: React.FC = () => {
       .post('/api/admin/paid-promotions', {
         shopId: selectedShop.id,
         channel: createForm.channel,
-        status: 'active',
         adminNote: createForm.adminNote.trim() || undefined,
       })
       .then(() => {
-        actionSuccess('付费推广已开启')
+        actionSuccess('已创建付费推广资格，等待商家配置')
         setCreateForm({ channel: 'tiktok', adminNote: '' })
         setSelectedShop(null)
         setShopSearchInput('')
@@ -194,9 +266,9 @@ const AdminPaidPromotions: React.FC = () => {
       return
     }
     requestEditConfirm({
-      title: '开启付费推广',
-      message: `确认已为店铺「${selectedShop.name}（${selectedShop.id}）」完成线下购买沟通，并为其开启付费推广？`,
-      confirmLabel: '确认开启',
+      title: '创建付费推广',
+      message: `确认为店铺「${selectedShop.name}（${selectedShop.id}）」创建付费推广资格？商家配置后可由您开启投放。`,
+      confirmLabel: '确认创建',
       onConfirm: performCreate,
     })
   }
@@ -222,40 +294,42 @@ const AdminPaidPromotions: React.FC = () => {
     })
   }
 
-  const updateMetricCell = (date: string, key: keyof MetricPoint, value: string) => {
-    setMetrics((prev) =>
-      prev.map((row) => {
-        if (row.date !== date) return row
-        if (key === 'date') return row
-        const num = Number(value)
-        return {
-          ...row,
-          [key]: Number.isFinite(num) ? Math.max(0, num) : 0,
-        }
-      }),
-    )
-  }
+  const buildCampaignPayload = () => ({
+    durationDays: Number(campaignConfig.durationDays),
+    budgetTotal: Number(campaignConfig.budgetTotal),
+    impressions: Number(campaignConfig.impressions),
+    clickRate: Number(campaignConfig.clickRate),
+    visits: Number(campaignConfig.visits),
+    orders: Number(campaignConfig.orders),
+    revenue: Number(campaignConfig.revenue),
+  })
 
-  const performSaveMetrics = () => {
+  const performLaunch = () => {
     if (!selectedId) return
-    setSavingMetrics(true)
+    setLaunching(true)
     api
-      .put(`/api/admin/paid-promotions/${selectedId}/metrics`, { metrics })
+      .post(`/api/admin/paid-promotions/${selectedId}/launch`, buildCampaignPayload())
       .then(() => {
-        saveSuccess('推广数据已保存')
+        actionSuccess('推广已开启，系统将按设定智能消耗预算并释放数据')
+        fetchList()
         fetchMetrics(selectedId)
       })
-      .catch((e) => saveError(e, '保存失败'))
-      .finally(() => setSavingMetrics(false))
+      .catch((e: unknown) => actionError(e, '开启失败'))
+      .finally(() => setLaunching(false))
   }
 
-  const saveMetrics = () => {
-    if (!selectedId) return
+  const handleLaunch = () => {
+    if (!selectedId || !selected) return
+    const payload = buildCampaignPayload()
+    if (!payload.durationDays || !payload.budgetTotal || !payload.impressions) {
+      actionError('请填写投放时长、总预算与总曝光')
+      return
+    }
     requestEditConfirm({
-      title: '保存推广数据',
-      message: '确认保存近 7 日智能推广数据？商家看板将同步展示。',
-      confirmLabel: '确认保存',
-      onConfirm: performSaveMetrics,
+      title: '开启推广',
+      message: `确认按当前配置为「${selected.shopName ?? selected.shopId}」开启推广？投放期间将不规则释放数据，结束时与预设完全一致。`,
+      confirmLabel: '开启推广',
+      onConfirm: performLaunch,
     })
   }
 
@@ -370,7 +444,7 @@ const AdminPaidPromotions: React.FC = () => {
             onClick={handleCreate}
             disabled={creating || !selectedShop}
           >
-            {creating ? '开启中…' : '开启推广'}
+            {creating ? '创建中…' : '创建推广资格'}
           </button>
         </div>
       </section>
@@ -437,18 +511,15 @@ const AdminPaidPromotions: React.FC = () => {
                           : item.targetType === 'shop'
                             ? '整店推广'
                             : '待商家选择'}
+                        {item.targetRegion ? (
+                          <div className="admin-table-sub">
+                            {REGION_LABEL[item.targetRegion] ?? item.targetRegion}
+                            {item.targetAudience ? ` · ${AUDIENCE_LABEL[item.targetAudience] ?? item.targetAudience}` : ''}
+                          </div>
+                        ) : null}
                       </td>
                       <td>
                         <div className="admin-table-actions">
-                          {item.status !== 'active' && (
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn--sm"
-                              onClick={() => updateStatus(item.id, 'active')}
-                            >
-                              开启
-                            </button>
-                          )}
                           {item.status === 'active' && (
                             <button
                               type="button"
@@ -458,7 +529,7 @@ const AdminPaidPromotions: React.FC = () => {
                               暂停
                             </button>
                           )}
-                          {item.status !== 'ended' && (
+                          {item.status === 'active' && (
                             <button
                               type="button"
                               className="admin-btn admin-btn--sm admin-btn--ghost"
@@ -478,7 +549,7 @@ const AdminPaidPromotions: React.FC = () => {
         </section>
 
         <section className="admin-card admin-paid-promotions-control">
-          <h2 className="admin-card-title">智能数据调控</h2>
+          <h2 className="admin-card-title">投放配置与智能消耗</h2>
           {!selected ? (
             <p className="admin-paid-promotions-placeholder">请从左侧选择一条推广记录</p>
           ) : (
@@ -499,55 +570,143 @@ const AdminPaidPromotions: React.FC = () => {
                       ? '整店推广'
                       : '商家尚未选择'}
                 </div>
+                {selected.targetRegion ? (
+                  <div>
+                    地区 / 受众：{REGION_LABEL[selected.targetRegion] ?? selected.targetRegion}
+                    {selected.targetAudience ? ` · ${AUDIENCE_LABEL[selected.targetAudience] ?? selected.targetAudience}` : ''}
+                  </div>
+                ) : null}
                 {selected.adminNote ? <div>备注：{selected.adminNote}</div> : null}
               </div>
 
-              {selected.targetType ? (
+              {selected.status === 'awaiting_launch' ? (
+                <div className="admin-paid-promotions-config-grid">
+                  <label className="admin-field">
+                    <span>投放时长（天）</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={90}
+                      value={campaignConfig.durationDays}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, durationDays: e.target.value }))}
+                    />
+                  </label>
+                  <label className="admin-field">
+                    <span>总预算 ($)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={campaignConfig.budgetTotal}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, budgetTotal: e.target.value }))}
+                    />
+                  </label>
+                  <label className="admin-field">
+                    <span>总曝光</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={campaignConfig.impressions}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, impressions: e.target.value }))}
+                    />
+                  </label>
+                  <label className="admin-field">
+                    <span>点击率 (%)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.1"
+                      value={campaignConfig.clickRate}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, clickRate: e.target.value }))}
+                    />
+                  </label>
+                  <label className="admin-field">
+                    <span>总进店</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={campaignConfig.visits}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, visits: e.target.value }))}
+                    />
+                  </label>
+                  <label className="admin-field">
+                    <span>总成交</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={campaignConfig.orders}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, orders: e.target.value }))}
+                    />
+                  </label>
+                  <label className="admin-field admin-field--wide">
+                    <span>总成交额 ($)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={campaignConfig.revenue}
+                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, revenue: e.target.value }))}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn--primary"
+                    onClick={handleLaunch}
+                    disabled={launching}
+                  >
+                    {launching ? '开启中…' : '开启推广'}
+                  </button>
+                </div>
+              ) : selected.status === 'pending' ? (
+                <p className="admin-paid-promotions-placeholder">
+                  等待商家在仪表盘选择推广目标、地区与受众并确认。
+                </p>
+              ) : selected.status === 'active' || selected.status === 'completed' ? (
                 <>
+                  {metricsSummary ? (
+                    <div className="admin-paid-promotions-live-summary">
+                      <span>预算消耗：{Math.round((metricsSummary.budgetProgress ?? 0) * 100)}%</span>
+                      <span>投放进度：{Math.round((metricsSummary.campaignProgress ?? 0) * 100)}%</span>
+                    </div>
+                  ) : null}
                   <div className="admin-paid-promotions-metrics-table-wrap">
                     <table className="admin-table admin-paid-promotions-metrics-table">
                       <thead>
                         <tr>
                           <th>日期</th>
-                          {METRIC_FIELDS.map((field) => (
-                            <th key={field.key}>{field.label}</th>
-                          ))}
+                          <th>曝光</th>
+                          <th>点击</th>
+                          <th>进店</th>
+                          <th>成交</th>
+                          <th>消耗</th>
+                          <th>成交额</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {metrics.map((row) => (
-                          <tr key={row.date}>
-                            <td>{formatDateLabel(row.date)}</td>
-                            {METRIC_FIELDS.map((field) => (
-                              <td key={field.key}>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={field.step ?? '1'}
-                                  className="admin-paid-promotions-metric-input"
-                                  value={row[field.key]}
-                                  onChange={(e) => updateMetricCell(row.date, field.key, e.target.value)}
-                                />
-                              </td>
-                            ))}
+                        {metrics.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="admin-table-empty">暂无已释放数据</td>
                           </tr>
-                        ))}
+                        ) : (
+                          metrics.map((row) => (
+                            <tr key={row.date}>
+                              <td>{formatDateLabel(row.date)}</td>
+                              <td>{row.impressions}</td>
+                              <td>{row.clicks}</td>
+                              <td>{row.visits}</td>
+                              <td>{row.orders}</td>
+                              <td>${row.spend.toFixed(2)}</td>
+                              <td>${row.revenue.toFixed(2)}</td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
-                  <button
-                    type="button"
-                    className="admin-btn admin-btn--primary"
-                    onClick={saveMetrics}
-                    disabled={savingMetrics}
-                  >
-                    {savingMetrics ? '保存中…' : '保存近 7 日数据'}
-                  </button>
                 </>
               ) : (
-                <p className="admin-paid-promotions-placeholder">
-                  商家尚未在仪表盘选择推广目标，选择后可在此调控投放数据。
-                </p>
+                <p className="admin-paid-promotions-placeholder">当前状态无需配置投放。</p>
               )}
             </>
           )}
