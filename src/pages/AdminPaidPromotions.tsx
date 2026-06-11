@@ -169,6 +169,35 @@ function progressPct(current: number, total: number) {
   return Math.min(100, Math.round((current / total) * 100))
 }
 
+function channelLabel(channel: PaidChannel): string {
+  return CHANNEL_OPTIONS.find((c) => c.value === channel)?.label ?? channel
+}
+
+function ChannelBadge({ channel }: { channel: PaidChannel }) {
+  return <span className={`admin-pp-channel admin-pp-channel--${channel}`}>{channelLabel(channel)}</span>
+}
+
+function StatusBadge({ status }: { status: PromoStatus }) {
+  return <span className={`admin-badge admin-badge--${status}`}>{STATUS_LABEL[status]}</span>
+}
+
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: number
+  tone: 'indigo' | 'emerald' | 'amber' | 'sky'
+}) {
+  return (
+    <div className={`admin-pp-stat admin-pp-stat--${tone}`}>
+      <span className="admin-pp-stat-value">{value.toLocaleString()}</span>
+      <span className="admin-pp-stat-label">{label}</span>
+    </div>
+  )
+}
+
 interface RunningCampaignItem {
   promotion: PromotionRow
   metrics: {
@@ -241,6 +270,25 @@ const AdminPaidPromotions: React.FC = () => {
     () => records.find((item) => item.promotion.id === selectedId) ?? null,
     [records, selectedId],
   )
+
+  const pageStats = useMemo(
+    () => ({
+      total: records.length,
+      running: runningCampaigns.length,
+      active: records.filter((item) => item.promotion.status === 'active').length,
+      awaiting: records.filter((item) => item.promotion.status === 'awaiting_launch').length,
+      pending: records.filter((item) => item.promotion.status === 'pending').length,
+    }),
+    [records, runningCampaigns],
+  )
+
+  const statusFilterOptions: Array<{ value: 'all' | PromoStatus; label: string }> = [
+    { value: 'all', label: '全部' },
+    ...Object.entries(STATUS_LABEL).map(([value, label]) => ({
+      value: value as PromoStatus,
+      label,
+    })),
+  ]
 
   const fetchRecords = useCallback(async () => {
     setLoading(true)
@@ -482,35 +530,43 @@ const AdminPaidPromotions: React.FC = () => {
 
   return (
     <div className="admin-page admin-paid-promotions-page">
-      <header className="admin-page-header">
-        <div>
-          <h1 className="admin-page-title">推广智能控</h1>
-          <p className="admin-page-desc">
-            商家完成付费流量购买后，在此开启推广；商家选择推广目标后，可智能调控近 7 日投放数据。
+      <header className="admin-pp-hero">
+        <div className="admin-pp-hero-copy">
+          <span className="admin-pp-hero-kicker">Paid Ads Console</span>
+          <h1 className="admin-pp-hero-title">推广智能控</h1>
+          <p className="admin-pp-hero-desc">
+            统一管理付费推广资格、商家投放配置与实时消耗进度，支持按会员账号检索历史记录。
           </p>
+        </div>
+        <div className="admin-pp-stats">
+          <StatCard label="投放中" value={pageStats.running} tone="emerald" />
+          <StatCard label="待开启" value={pageStats.awaiting} tone="sky" />
+          <StatCard label="待商家配置" value={pageStats.pending} tone="amber" />
+          <StatCard label="全部记录" value={pageStats.total} tone="indigo" />
         </div>
       </header>
 
-      <section className="admin-card admin-paid-promotions-running">
-        <div className="admin-paid-promotions-running-head">
+      <section className="admin-pp-panel admin-pp-panel--running">
+        <div className="admin-pp-panel-head">
           <div>
-            <h2 className="admin-card-title">投放中监控</h2>
-            <p className="admin-paid-promotions-running-desc">
-              查看已开启推广的实时进度、配置参数与距离结算的剩余时间。
-            </p>
+            <h2 className="admin-pp-panel-title">投放中监控</h2>
+            <p className="admin-pp-panel-desc">实时查看进度、预算消耗与结算倒计时，每 10 秒自动刷新。</p>
           </div>
           <button
             type="button"
-            className="admin-btn admin-btn--sm admin-btn--ghost"
+            className="admin-btn admin-btn--sm admin-btn--ghost admin-pp-refresh-btn"
             onClick={fetchRunningCampaigns}
             disabled={runningLoading}
           >
-            {runningLoading ? '刷新中…' : '刷新'}
+            {runningLoading ? '刷新中…' : '手动刷新'}
           </button>
         </div>
 
         {runningCampaigns.length === 0 ? (
-          <p className="admin-paid-promotions-placeholder">当前没有投放中的推广</p>
+          <div className="admin-pp-empty admin-pp-empty--inline">
+            <span className="admin-pp-empty-icon" aria-hidden="true">◎</span>
+            <p>当前没有投放中的推广</p>
+          </div>
         ) : (
           <div className="admin-paid-promotions-running-grid">
             {runningCampaigns.map((item) => {
@@ -534,10 +590,11 @@ const AdminPaidPromotions: React.FC = () => {
                 <article key={promo.id} className="admin-paid-promotions-running-card">
                   <header className="admin-paid-promotions-running-card-head">
                     <div>
-                      <strong>{promo.shopName ?? promo.shopId}</strong>
-                      <span className="admin-paid-promotions-running-card-sub">
-                        {CHANNEL_OPTIONS.find((c) => c.value === promo.channel)?.label} · {promo.shopId}
-                      </span>
+                      <div className="admin-pp-running-shop-row">
+                        <strong>{promo.shopName ?? promo.shopId}</strong>
+                        <ChannelBadge channel={promo.channel} />
+                      </div>
+                      <span className="admin-paid-promotions-running-card-sub">{promo.shopId}</span>
                     </div>
                     <span
                       className={`admin-paid-promotions-running-timer${item.isSettling ? ' admin-paid-promotions-running-timer--due' : ''}`}
@@ -579,11 +636,11 @@ const AdminPaidPromotions: React.FC = () => {
                     </div>
                     <div>
                       <span>投放地区</span>
-                      <strong>{promo.targetRegion ?? '—'}</strong>
+                      <strong>{promo.targetRegion ? (REGION_LABEL[promo.targetRegion] ?? promo.targetRegion) : '—'}</strong>
                     </div>
                     <div>
                       <span>目标受众</span>
-                      <strong>{promo.targetAudience ?? '—'}</strong>
+                      <strong>{promo.targetAudience ? (AUDIENCE_LABEL[promo.targetAudience] ?? promo.targetAudience) : '—'}</strong>
                     </div>
                   </div>
 
@@ -660,8 +717,15 @@ const AdminPaidPromotions: React.FC = () => {
         )}
       </section>
 
-      <section className="admin-card admin-paid-promotions-create">
-        <h2 className="admin-card-title">开启付费推广</h2>
+      <div className="admin-pp-workspace">
+        <aside className="admin-pp-sidebar">
+          <section className="admin-pp-panel admin-pp-panel--create">
+            <div className="admin-pp-panel-head admin-pp-panel-head--compact">
+              <div>
+                <h2 className="admin-pp-panel-title">开启付费推广</h2>
+                <p className="admin-pp-panel-desc">为店铺创建推广资格，商家确认目标后由您开启投放。</p>
+              </div>
+            </div>
         <div className="admin-paid-promotions-shop-search">
           <label className="admin-field admin-field--search">
             <span>搜索店铺</span>
@@ -759,15 +823,17 @@ const AdminPaidPromotions: React.FC = () => {
             {creating ? '创建中…' : '创建推广资格'}
           </button>
         </div>
-      </section>
+          </section>
+        </aside>
 
+        <div className="admin-pp-main">
       <div className="admin-paid-promotions-layout">
-        <section className="admin-card admin-paid-promotions-list">
+        <section className="admin-pp-panel admin-pp-panel--records">
           <div className="admin-paid-promotions-list-head">
             <div>
-              <h2 className="admin-card-title">推广记录</h2>
+              <h2 className="admin-pp-panel-title">推广记录</h2>
               <p className="admin-paid-promotions-records-desc">
-                查看各会员店铺的付费推广记录、商家配置与投放参数。
+                会员配置、投放参数与实际效果一览。
               </p>
             </div>
             <div className="admin-paid-promotions-records-filters">
@@ -786,23 +852,27 @@ const AdminPaidPromotions: React.FC = () => {
               />
               <button
                 type="button"
-                className="admin-btn admin-btn--sm"
+                className="admin-btn admin-btn--sm admin-btn--primary"
                 onClick={() => setRecordSearch(recordSearchInput.trim())}
               >
                 搜索
               </button>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | PromoStatus)}
-              >
-                <option value="all">全部状态</option>
-                {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
             </div>
+          </div>
+
+          <div className="admin-pp-status-tabs" role="tablist" aria-label="推广状态筛选">
+            {statusFilterOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                role="tab"
+                aria-selected={statusFilter === opt.value}
+                className={`admin-pp-status-tab${statusFilter === opt.value ? ' admin-pp-status-tab--active' : ''}`}
+                onClick={() => setStatusFilter(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
           <div className="admin-paid-promotions-table-wrap admin-paid-promotions-records-table-wrap">
             <table className="admin-table admin-paid-promotions-records-table">
@@ -828,7 +898,6 @@ const AdminPaidPromotions: React.FC = () => {
                 ) : (
                   records.map(({ promotion: item, metricsSummary }) => {
                     const totals = metricsSummary?.totals
-                    const presets = metricsSummary?.presets
                     return (
                       <tr
                         key={item.id}
@@ -845,32 +914,23 @@ const AdminPaidPromotions: React.FC = () => {
                         <td>
                           <button
                             type="button"
-                            className="admin-link-btn"
+                            className="admin-link-btn admin-pp-shop-link"
                             onClick={() => setSelectedId(item.id)}
                           >
                             {item.shopName ?? item.shopId}
                           </button>
                           <div className="admin-table-sub">{item.shopId}</div>
                           {item.ownerAccount ? (
-                            <div className="admin-table-sub">会员 {item.ownerAccount}</div>
+                            <div className="admin-pp-member-tag">会员 {item.ownerAccount}</div>
                           ) : null}
                         </td>
-                        <td>{CHANNEL_OPTIONS.find((c) => c.value === item.channel)?.label ?? item.channel}</td>
+                        <td><ChannelBadge channel={item.channel} /></td>
+                        <td><StatusBadge status={item.status} /></td>
                         <td>
-                          <span className={`admin-badge admin-badge--${item.status}`}>
-                            {STATUS_LABEL[item.status]}
-                          </span>
+                          <div className="admin-pp-cell-main">{formatMerchantConfig(item)}</div>
                         </td>
                         <td>
-                          <div>{formatMerchantConfig(item)}</div>
-                          {item.merchantConfirmedAt ? (
-                            <div className="admin-table-sub">
-                              确认于 {formatDateTime(item.merchantConfirmedAt)}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td>
-                          <div>{formatCampaignConfig(item)}</div>
+                          <div className="admin-pp-cell-main">{formatCampaignConfig(item)}</div>
                           {item.campaignStartAt ? (
                             <div className="admin-table-sub">
                               {formatDateTime(item.campaignStartAt)} — {formatDateTime(item.campaignEndAt)}
@@ -879,18 +939,13 @@ const AdminPaidPromotions: React.FC = () => {
                         </td>
                         <td>
                           {metricsSummary && totals ? (
-                            <>
-                              <div>
-                                曝光 {totals.impressions.toLocaleString()}
-                                {presets?.impressions ? ` / ${presets.impressions.toLocaleString()}` : ''}
-                              </div>
-                              <div className="admin-table-sub">
-                                点击 {totals.clicks.toLocaleString()} · 进店 {totals.visits.toLocaleString()} · $
-                                {totals.spend.toFixed(2)}
-                              </div>
-                            </>
+                            <div className="admin-pp-metrics-chip">
+                              <strong>{totals.visits.toLocaleString()}</strong>
+                              <span>进店</span>
+                              <em>${totals.spend.toFixed(2)} 消耗</em>
+                            </div>
                           ) : (
-                            '—'
+                            <span className="admin-pp-muted">—</span>
                           )}
                         </td>
                         <td>
@@ -940,24 +995,36 @@ const AdminPaidPromotions: React.FC = () => {
           </div>
         </section>
 
-        <section className="admin-card admin-paid-promotions-control">
-          <h2 className="admin-card-title">记录详情</h2>
+        <section className="admin-pp-panel admin-pp-panel--detail admin-paid-promotions-control">
+          <h2 className="admin-pp-panel-title">记录详情</h2>
           {!selected ? (
-            <p className="admin-paid-promotions-placeholder">请从左侧选择一条推广记录</p>
+            <div className="admin-pp-empty">
+              <span className="admin-pp-empty-icon" aria-hidden="true">☰</span>
+              <p>从左侧选择一条推广记录</p>
+              <span className="admin-pp-empty-hint">可查看商家配置、投放参数与每日释放数据</span>
+            </div>
           ) : (
             <>
-              <div className="admin-paid-promotions-selected-meta">
-                <div>
-                  <strong>{selected.shopName ?? selected.shopId}</strong>
-                  <span>
-                    {CHANNEL_OPTIONS.find((c) => c.value === selected.channel)?.label} ·{' '}
-                    {STATUS_LABEL[selected.status]}
-                  </span>
+              <div className="admin-pp-detail-header">
+                <div className="admin-pp-detail-avatar" aria-hidden="true">
+                  {(selected.shopName ?? selected.shopId).slice(0, 1).toUpperCase()}
                 </div>
-                {selected.ownerAccount ? <div>会员账号：{selected.ownerAccount}</div> : null}
-                <div>店铺 ID：{selected.shopId}</div>
-                <div>创建时间：{formatDateTime(selected.createdAt)}</div>
-                {selected.adminNote ? <div>管理员备注：{selected.adminNote}</div> : null}
+                <div className="admin-pp-detail-header-main">
+                  <strong>{selected.shopName ?? selected.shopId}</strong>
+                  <div className="admin-pp-detail-header-tags">
+                    <ChannelBadge channel={selected.channel} />
+                    <StatusBadge status={selected.status} />
+                  </div>
+                  <div className="admin-pp-detail-header-meta">
+                    {selected.ownerAccount ? <span>会员 {selected.ownerAccount}</span> : null}
+                    <span>{selected.shopId}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-paid-promotions-selected-meta admin-pp-detail-meta">
+                <div><span>创建</span>{formatDateTime(selected.createdAt)}</div>
+                {selected.adminNote ? <div><span>备注</span>{selected.adminNote}</div> : null}
               </div>
 
               <div className="admin-paid-promotions-config-detail">
@@ -1163,6 +1230,8 @@ const AdminPaidPromotions: React.FC = () => {
             </>
           )}
         </section>
+      </div>
+        </div>
       </div>
     </div>
   )

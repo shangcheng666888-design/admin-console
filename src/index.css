@@ -25239,6 +25239,360 @@ button {
 }
 
 /* ========== Paid promotions (推广智能控) ========== */
+.admin-paid-promotions-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-pp-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.35rem 1.5rem;
+  border-radius: 18px;
+  border: 1px solid #dbeafe;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.14) 0%, transparent 42%),
+    linear-gradient(135deg, #ffffff 0%, #f8faff 52%, #eef2ff 100%);
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.06);
+}
+
+.admin-pp-hero-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.admin-pp-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.1);
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-pp-hero-title {
+  margin: 0.55rem 0 0.35rem;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.admin-pp-hero-desc {
+  margin: 0;
+  max-width: 42rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.admin-pp-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  gap: 0.65rem;
+  flex: 0 1 280px;
+}
+
+.admin-pp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.admin-pp-stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.admin-pp-stat-label {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.admin-pp-stat--indigo .admin-pp-stat-value { color: #4338ca; }
+.admin-pp-stat--emerald .admin-pp-stat-value { color: #059669; }
+.admin-pp-stat--amber .admin-pp-stat-value { color: #d97706; }
+.admin-pp-stat--sky .admin-pp-stat-value { color: #0284c7; }
+
+.admin-pp-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.admin-pp-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.admin-pp-panel-head--compact {
+  margin-bottom: 0.65rem;
+}
+
+.admin-pp-panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-pp-panel-desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.admin-pp-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.admin-pp-sidebar {
+  position: sticky;
+  top: 1rem;
+}
+
+.admin-pp-main {
+  min-width: 0;
+}
+
+.admin-pp-refresh-btn {
+  flex-shrink: 0;
+}
+
+.admin-pp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.admin-pp-empty--inline {
+  padding: 1.5rem 1rem;
+}
+
+.admin-pp-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
+.admin-pp-empty p {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.admin-pp-empty-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.admin-pp-status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.admin-pp-status-tab {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.admin-pp-status-tab:hover {
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+.admin-pp-status-tab--active {
+  border-color: #818cf8;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.admin-pp-channel {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-pp-channel--tiktok { background: #fce7f3; color: #be185d; }
+.admin-pp-channel--meta { background: #dbeafe; color: #1d4ed8; }
+.admin-pp-channel--google { background: #dcfce7; color: #15803d; }
+.admin-pp-channel--other { background: #f1f5f9; color: #475569; }
+
+.admin-pp-member-tag {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.admin-pp-shop-link {
+  font-size: 0.875rem;
+}
+
+.admin-pp-cell-main {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.admin-pp-metrics-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.admin-pp-metrics-chip strong {
+  font-size: 0.9375rem;
+  color: #166534;
+}
+
+.admin-pp-metrics-chip span {
+  font-size: 0.72rem;
+  color: #15803d;
+}
+
+.admin-pp-metrics-chip em {
+  font-style: normal;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.admin-pp-muted {
+  color: #cbd5e1;
+}
+
+.admin-pp-running-shop-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.admin-pp-detail-header {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.admin-pp-detail-avatar {
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 800;
+}
+
+.admin-pp-detail-header-main {
+  min-width: 0;
+}
+
+.admin-pp-detail-header-main strong {
+  display: block;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.admin-pp-detail-header-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.admin-pp-detail-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.admin-pp-detail-meta {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.admin-pp-detail-meta div {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.admin-pp-detail-meta span:first-child {
+  min-width: 2.5rem;
+  color: #94a3b8;
+}
+
 .admin-paid-promotions-page .admin-page-header {
   margin-bottom: 1rem;
 }
@@ -25247,11 +25601,12 @@ button {
 .admin-paid-promotions-list,
 .admin-paid-promotions-control,
 .admin-paid-promotions-running {
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 1rem 1.1rem;
-  margin-bottom: 1rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  margin-bottom: 0;
+  box-shadow: none;
 }
 
 .admin-card-title {
@@ -25412,8 +25767,16 @@ button {
 
 .admin-paid-promotions-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
   gap: 1rem;
+  align-items: start;
+}
+
+.admin-pp-panel--detail {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
 }
 
 .admin-paid-promotions-list-head {
@@ -25446,7 +25809,25 @@ button {
 }
 
 .admin-paid-promotions-records-table-wrap {
-  max-height: 520px;
+  max-height: min(560px, calc(100vh - 16rem));
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+}
+
+.admin-paid-promotions-records-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  box-shadow: inset 0 -1px 0 #eef2f7;
+}
+
+.admin-paid-promotions-records-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.admin-paid-promotions-records-table tbody tr:hover {
+  background: #fafbff;
 }
 
 .admin-paid-promotions-records-table th,
@@ -25456,11 +25837,11 @@ button {
 }
 
 .admin-paid-promotions-config-detail {
-  margin-top: 1rem;
-  padding: 0.85rem 1rem;
+  margin-top: 0.75rem;
+  padding: 0.9rem 1rem;
   border: 1px solid #eef2f7;
-  border-radius: 10px;
-  background: #fafbfd;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fafbfd 0%, #ffffff 100%);
 }
 
 .admin-paid-promotions-config-detail-title {
@@ -25703,12 +26084,13 @@ button {
 
 .admin-paid-promotions-running-card {
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 42%);
-  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
 
 .admin-paid-promotions-running-card-head {
@@ -25850,10 +26232,31 @@ button {
   margin-left: auto;
 }
 
+@media (max-width: 1200px) {
+  .admin-pp-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-pp-sidebar,
+  .admin-pp-panel--detail {
+    position: static;
+    max-height: none;
+  }
+}
+
 @media (max-width: 1100px) {
   .admin-paid-promotions-layout,
   .admin-paid-promotions-create-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-pp-hero {
+    padding: 1rem;
+  }
+
+  .admin-pp-stats {
+    flex: 1 1 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .admin-field--wide {
@@ -25867,5 +26270,15 @@ button {
   .admin-paid-promotions-selected-shop {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-pp-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-paid-promotions-records-table-wrap {
+    max-height: 420px;
   }
 }
