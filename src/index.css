@@ -25237,3 +25237,225 @@ button {
   font-size: 0.8125rem;
   font-weight: 600;
 }
+
+/* ========== Paid promotions (推广智能控) ========== */
+.admin-paid-promotions-page .admin-page-header {
+  margin-bottom: 1rem;
+}
+
+.admin-paid-promotions-create,
+.admin-paid-promotions-list,
+.admin-paid-promotions-control {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-card-title {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-paid-promotions-create-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.admin-field--wide {
+  grid-column: span 2;
+}
+
+.admin-field select,
+.admin-field input {
+  height: 38px;
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  padding: 0 0.65rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.admin-btn {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #dbe3f0;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0 0.85rem;
+  cursor: pointer;
+}
+
+.admin-btn--primary {
+  border-color: #4f46e5;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+}
+
+.admin-btn--sm {
+  height: 30px;
+  font-size: 0.75rem;
+  padding: 0 0.55rem;
+}
+
+.admin-btn--ghost {
+  background: transparent;
+}
+
+.admin-paid-promotions-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.admin-paid-promotions-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-paid-promotions-table-wrap,
+.admin-paid-promotions-metrics-table-wrap {
+  overflow: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.admin-table th,
+.admin-table td {
+  border-bottom: 1px solid #eef2f7;
+  padding: 0.55rem 0.45rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  color: #64748b;
+  font-weight: 600;
+  background: #f8fafc;
+}
+
+.admin-table-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 1.25rem !important;
+}
+
+.admin-table-sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.admin-table-row--active {
+  background: #f5f7ff;
+}
+
+.admin-link-btn {
+  border: none;
+  background: transparent;
+  color: #4f46e5;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.admin-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.admin-badge--active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.admin-badge--pending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.admin-badge--paused {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.admin-badge--ended {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-paid-promotions-selected-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.admin-paid-promotions-selected-meta strong {
+  color: #0f172a;
+  margin-right: 0.35rem;
+}
+
+.admin-paid-promotions-placeholder {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.admin-paid-promotions-metric-input {
+  width: 72px;
+  height: 30px;
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  padding: 0 0.35rem;
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 1100px) {
+  .admin-paid-promotions-layout,
+  .admin-paid-promotions-create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-field--wide {
+    grid-column: auto;
+  }
+}

@@ -17,6 +17,7 @@ const AdminAuditShops = lazy(() => import('./pages/AdminAuditShops'))
 const AdminAuditFunds = lazy(() => import('./pages/AdminAuditFunds'))
 const AdminAuditShopFunds = lazy(() => import('./pages/AdminAuditShopFunds'))
 const AdminAuditMallFunds = lazy(() => import('./pages/AdminAuditMallFunds'))
+const AdminPaidPromotions = lazy(() => import('./pages/AdminPaidPromotions'))
 
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation()
@@ -50,6 +51,7 @@ const App: React.FC = () => (
           <Route path="audit/shop-funds" element={<AdminAuditShopFunds />} />
           <Route path="audit/mall-funds" element={<AdminAuditMallFunds />} />
           <Route path="system" element={<AdminSystem />} />
+          <Route path="paid-promotions" element={<AdminPaidPromotions />} />
           <Route index element={<Navigate to="dashboard" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />

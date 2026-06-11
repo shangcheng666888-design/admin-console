@@ -17,6 +17,7 @@ const NAV_GROUPS: { path: string; label: string }[][] = [
   [
     { path: '/audit/shops', label: '店铺审核' },
     { path: '/audit/funds', label: '资金审核' },
+    { path: '/paid-promotions', label: '推广智能控' },
   ],
   [{ path: '/system', label: '系统管理' }],
 ]
