@@ -25707,7 +25707,7 @@ button {
 
 .admin-pp-list-head-row,
 .admin-pp-list-item {
-  --pp-list-cols: 52px minmax(180px, 1.25fr) minmax(128px, 0.9fr) minmax(150px, 1fr) minmax(96px, 0.72fr) minmax(120px, 0.82fr);
+  --pp-list-cols: minmax(220px, 1.35fr) minmax(128px, 0.9fr) minmax(150px, 1fr) minmax(96px, 0.72fr) minmax(120px, 0.82fr);
   display: grid;
   grid-template-columns: var(--pp-list-cols);
   gap: 0.75rem;
@@ -25732,7 +25732,6 @@ button {
   min-height: 1.5rem;
 }
 
-.admin-pp-list-head-row .admin-pp-list-col--avatar,
 .admin-pp-list-head-row .admin-pp-list-col--status,
 .admin-pp-list-head-row .admin-pp-list-col--config,
 .admin-pp-list-head-row .admin-pp-list-col--metrics,
@@ -25773,14 +25772,15 @@ button {
   display: flex;
 }
 
-.admin-pp-list-col--avatar {
-  justify-content: center;
+.admin-pp-list-col--shop {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  justify-content: flex-start;
 }
 
-.admin-pp-list-col--shop {
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
+.admin-pp-list-col--shop .admin-pp-shop-avatar {
+  flex-shrink: 0;
 }
 
 .admin-pp-list-shop-copy {
@@ -26979,18 +26979,17 @@ button {
   }
 
   .admin-pp-list-item {
-    grid-template-columns: 52px 1fr;
+    grid-template-columns: 1fr;
     grid-template-areas:
-      'avatar shop'
-      'avatar status'
-      'avatar config'
-      'avatar metrics'
-      'avatar actions';
+      'shop'
+      'status'
+      'config'
+      'metrics'
+      'actions';
     row-gap: 0.45rem;
     align-items: start;
   }
 
-  .admin-pp-list-col--avatar { grid-area: avatar; }
   .admin-pp-list-col--shop { grid-area: shop; }
   .admin-pp-list-col--status { grid-area: status; align-items: flex-start; text-align: left; }
   .admin-pp-list-col--config { grid-area: config; justify-content: flex-start; }

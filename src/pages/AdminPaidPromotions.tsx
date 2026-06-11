@@ -296,10 +296,8 @@ function PromotionListItem({
         }
       }}
     >
-      <div className="admin-pp-list-col admin-pp-list-col--avatar">
-        <ShopAvatar name={name} logo={item.shopLogo} size="lg" />
-      </div>
       <div className="admin-pp-list-col admin-pp-list-col--shop">
+        <ShopAvatar name={name} logo={item.shopLogo} size="lg" />
         <div className="admin-pp-list-shop-copy">
           <strong className="admin-pp-list-shop-name">{name}</strong>
           <code className="admin-pp-list-shop-id">{item.shopId}</code>
@@ -1055,7 +1053,6 @@ const AdminPaidPromotions: React.FC = () => {
             </div>
 
             <div className="admin-pp-list-head-row" aria-hidden="true">
-              <span className="admin-pp-list-col admin-pp-list-col--avatar">头像</span>
               <span className="admin-pp-list-col admin-pp-list-col--shop">店铺信息</span>
               <span className="admin-pp-list-col admin-pp-list-col--status">状态 / 渠道</span>
               <span className="admin-pp-list-col admin-pp-list-col--config">推广配置</span>
