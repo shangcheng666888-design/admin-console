@@ -32,9 +32,11 @@ interface MetricPoint {
   revenue: number
 }
 
-interface ShopOption {
+interface ShopSearchResult {
   id: string
   name: string
+  ownerAccount?: string
+  status?: string
 }
 
 const CHANNEL_OPTIONS: { value: PaidChannel; label: string }[] = [
@@ -74,12 +76,14 @@ const AdminPaidPromotions: React.FC = () => {
   const [savingMetrics, setSavingMetrics] = useState(false)
   const [creating, setCreating] = useState(false)
   const [list, setList] = useState<PromotionRow[]>([])
-  const [shops, setShops] = useState<ShopOption[]>([])
   const [statusFilter, setStatusFilter] = useState<'all' | PromoStatus>('all')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [metrics, setMetrics] = useState<MetricPoint[]>([])
+  const [shopSearchInput, setShopSearchInput] = useState('')
+  const [shopSearchLoading, setShopSearchLoading] = useState(false)
+  const [shopSearchResults, setShopSearchResults] = useState<ShopSearchResult[]>([])
+  const [selectedShop, setSelectedShop] = useState<ShopSearchResult | null>(null)
   const [createForm, setCreateForm] = useState({
-    shopId: '',
     channel: 'tiktok' as PaidChannel,
     adminNote: '',
   })
@@ -103,15 +107,6 @@ const AdminPaidPromotions: React.FC = () => {
     }
   }, [loadError, statusFilter])
 
-  const fetchShops = useCallback(async () => {
-    try {
-      const res = await api.get<{ list: ShopOption[] }>('/api/admin/paid-promotions/shops-options')
-      setShops(Array.isArray(res.list) ? res.list : [])
-    } catch {
-      setShops([])
-    }
-  }, [])
-
   const fetchMetrics = useCallback(async (id: number) => {
     try {
       const res = await api.get<{ series: MetricPoint[] }>(`/api/admin/paid-promotions/${id}/metrics`)
@@ -124,8 +119,47 @@ const AdminPaidPromotions: React.FC = () => {
 
   useEffect(() => {
     fetchList()
-    fetchShops()
-  }, [fetchList, fetchShops])
+  }, [fetchList])
+
+  const searchShops = useCallback(async () => {
+    const keyword = shopSearchInput.trim()
+    if (!keyword) {
+      actionError('请输入店铺 ID 或店铺名称')
+      return
+    }
+    setShopSearchLoading(true)
+    setShopSearchResults([])
+    try {
+      const res = await api.get<{ list: ShopSearchResult[] }>(
+        `/api/shops?search=${encodeURIComponent(keyword)}`,
+      )
+      let results = Array.isArray(res.list) ? res.list.filter((s) => s.status !== 'banned') : []
+      if (results.length === 0) {
+        const exactRes = await api.get<{ list: ShopSearchResult[] }>(
+          `/api/shops?shop=${encodeURIComponent(keyword)}`,
+        )
+        results = Array.isArray(exactRes.list) ? exactRes.list : []
+      }
+      setShopSearchResults(results)
+      if (results.length === 0) {
+        actionError('未找到匹配的店铺，请检查 ID 或名称')
+      }
+    } catch (e) {
+      actionError(e, '搜索店铺失败')
+      setShopSearchResults([])
+    } finally {
+      setShopSearchLoading(false)
+    }
+  }, [shopSearchInput, actionError])
+
+  const selectShop = (shop: ShopSearchResult) => {
+    setSelectedShop(shop)
+    setShopSearchResults([])
+  }
+
+  const clearSelectedShop = () => {
+    setSelectedShop(null)
+  }
 
   useEffect(() => {
     if (selectedId) fetchMetrics(selectedId)
@@ -133,18 +167,21 @@ const AdminPaidPromotions: React.FC = () => {
   }, [selectedId, fetchMetrics])
 
   const performCreate = () => {
-    if (!createForm.shopId) return
+    if (!selectedShop?.id) return
     setCreating(true)
     api
       .post('/api/admin/paid-promotions', {
-        shopId: createForm.shopId,
+        shopId: selectedShop.id,
         channel: createForm.channel,
         status: 'active',
         adminNote: createForm.adminNote.trim() || undefined,
       })
       .then(() => {
         actionSuccess('付费推广已开启')
-        setCreateForm({ shopId: '', channel: 'tiktok', adminNote: '' })
+        setCreateForm({ channel: 'tiktok', adminNote: '' })
+        setSelectedShop(null)
+        setShopSearchInput('')
+        setShopSearchResults([])
         fetchList()
       })
       .catch((e) => actionError(e, '开启失败'))
@@ -152,13 +189,13 @@ const AdminPaidPromotions: React.FC = () => {
   }
 
   const handleCreate = () => {
-    if (!createForm.shopId) {
-      actionError('请选择店铺')
+    if (!selectedShop?.id) {
+      actionError('请先搜索并选择店铺')
       return
     }
     requestEditConfirm({
       title: '开启付费推广',
-      message: '确认已为该店铺完成线下购买沟通，并为其开启付费推广？',
+      message: `确认已为店铺「${selectedShop.name}（${selectedShop.id}）」完成线下购买沟通，并为其开启付费推广？`,
       confirmLabel: '确认开启',
       onConfirm: performCreate,
     })
@@ -239,21 +276,70 @@ const AdminPaidPromotions: React.FC = () => {
 
       <section className="admin-card admin-paid-promotions-create">
         <h2 className="admin-card-title">开启付费推广</h2>
-        <div className="admin-paid-promotions-create-grid">
-          <label className="admin-field">
-            <span>店铺</span>
-            <select
-              value={createForm.shopId}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, shopId: e.target.value }))}
-            >
-              <option value="">请选择店铺</option>
-              {shops.map((shop) => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.name} ({shop.id})
-                </option>
-              ))}
-            </select>
+        <div className="admin-paid-promotions-shop-search">
+          <label className="admin-field admin-field--search">
+            <span>搜索店铺</span>
+            <div className="admin-paid-promotions-search-row">
+              <input
+                type="text"
+                value={shopSearchInput}
+                onChange={(e) => setShopSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    searchShops()
+                  }
+                }}
+                placeholder="输入店铺 ID 或店铺名称"
+              />
+              <button
+                type="button"
+                className="admin-btn admin-btn--primary"
+                onClick={searchShops}
+                disabled={shopSearchLoading}
+              >
+                {shopSearchLoading ? '搜索中…' : '搜索'}
+              </button>
+            </div>
           </label>
+
+          {shopSearchResults.length > 0 ? (
+            <ul className="admin-paid-promotions-shop-results">
+              {shopSearchResults.map((shop) => (
+                <li key={shop.id}>
+                  <button
+                    type="button"
+                    className="admin-paid-promotions-shop-result"
+                    onClick={() => selectShop(shop)}
+                  >
+                    <span className="admin-paid-promotions-shop-result-name">{shop.name}</span>
+                    <span className="admin-paid-promotions-shop-result-meta">
+                      {shop.id}
+                      {shop.ownerAccount ? ` · 店主 ${shop.ownerAccount}` : ''}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {selectedShop ? (
+            <div className="admin-paid-promotions-selected-shop">
+              <div>
+                <span className="admin-paid-promotions-selected-shop-label">已选店铺</span>
+                <strong>{selectedShop.name}</strong>
+                <span className="admin-paid-promotions-selected-shop-id">{selectedShop.id}</span>
+              </div>
+              <button type="button" className="admin-btn admin-btn--sm admin-btn--ghost" onClick={clearSelectedShop}>
+                重新选择
+              </button>
+            </div>
+          ) : (
+            <p className="admin-paid-promotions-shop-hint">搜索并选择店铺后，再选择推广渠道并开启。</p>
+          )}
+        </div>
+
+        <div className="admin-paid-promotions-create-grid">
           <label className="admin-field">
             <span>推广渠道</span>
             <select
@@ -282,7 +368,7 @@ const AdminPaidPromotions: React.FC = () => {
             type="button"
             className="admin-btn admin-btn--primary"
             onClick={handleCreate}
-            disabled={creating}
+            disabled={creating || !selectedShop}
           >
             {creating ? '开启中…' : '开启推广'}
           </button>
