@@ -156,6 +156,16 @@ function formatDurationLabel(value: number | null, unit: PromotionRow['campaignD
   return `${value} 天`
 }
 
+function formatAudienceLabel(value: string | null | undefined): string {
+  if (!value) return '—'
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => AUDIENCE_LABEL[item] ?? item)
+    .join('、')
+}
+
 function formatConfigSummary(item: PromotionRow): string {
   const parts: string[] = [formatTargetLabel(item)]
   if (item.targetRegion) {
@@ -824,7 +834,7 @@ const AdminPaidPromotions: React.FC = () => {
                     </div>
                     <div>
                       <span>目标受众</span>
-                      <strong>{promo.targetAudience ? (AUDIENCE_LABEL[promo.targetAudience] ?? promo.targetAudience) : '—'}</strong>
+                      <strong>{formatAudienceLabel(promo.targetAudience)}</strong>
                     </div>
                   </div>
 
@@ -1162,11 +1172,7 @@ const AdminPaidPromotions: React.FC = () => {
                   </div>
                   <div>
                     <dt>目标受众</dt>
-                    <dd>
-                      {selected.targetAudience
-                        ? AUDIENCE_LABEL[selected.targetAudience] ?? selected.targetAudience
-                        : '—'}
-                    </dd>
+                    <dd>{formatAudienceLabel(selected.targetAudience)}</dd>
                   </div>
                   <div>
                     <dt>商家确认时间</dt>
