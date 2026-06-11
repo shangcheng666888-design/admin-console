@@ -21,6 +21,8 @@ interface PromotionRow {
   targetAudience: string | null
   adminNote: string | null
   campaignDurationDays: number | null
+  campaignDurationValue: number | null
+  campaignDurationUnit: 'minute' | 'hour' | 'day' | null
   budgetTotal: number | null
   presetImpressions: number | null
   presetClicks: number | null
@@ -126,13 +128,12 @@ const AdminPaidPromotions: React.FC = () => {
     presets?: MetricPoint
   } | null>(null)
   const [campaignConfig, setCampaignConfig] = useState({
-    durationDays: '7',
+    durationValue: '7',
+    durationUnit: 'day' as 'minute' | 'hour' | 'day',
     budgetTotal: '',
     impressions: '',
     clickRate: '',
     visits: '',
-    orders: '',
-    revenue: '',
   })
   const [shopSearchInput, setShopSearchInput] = useState('')
   const [shopSearchLoading, setShopSearchLoading] = useState(false)
@@ -167,13 +168,12 @@ const AdminPaidPromotions: React.FC = () => {
     const impressions = promotion.presetImpressions ?? 0
     const clickRate = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : ''
     setCampaignConfig({
-      durationDays: String(promotion.campaignDurationDays ?? 7),
+      durationValue: String(promotion.campaignDurationValue ?? promotion.campaignDurationDays ?? 7),
+      durationUnit: promotion.campaignDurationUnit ?? 'day',
       budgetTotal: promotion.budgetTotal != null ? String(promotion.budgetTotal) : '',
       impressions: promotion.presetImpressions != null ? String(promotion.presetImpressions) : '',
       clickRate,
       visits: promotion.presetVisits != null ? String(promotion.presetVisits) : '',
-      orders: promotion.presetOrders != null ? String(promotion.presetOrders) : '',
-      revenue: promotion.presetRevenue != null ? String(promotion.presetRevenue) : '',
     })
   }, [])
 
@@ -313,14 +313,15 @@ const AdminPaidPromotions: React.FC = () => {
   }
 
   const buildCampaignPayload = () => ({
-    durationDays: Number(campaignConfig.durationDays),
+    durationValue: Number(campaignConfig.durationValue),
+    durationUnit: campaignConfig.durationUnit,
     budgetTotal: Number(campaignConfig.budgetTotal),
     impressions: Number(campaignConfig.impressions),
     clickRate: Number(campaignConfig.clickRate),
     visits: Number(campaignConfig.visits),
-    orders: Number(campaignConfig.orders),
-    revenue: Number(campaignConfig.revenue),
   })
+
+  const durationMax = campaignConfig.durationUnit === 'minute' ? 1440 : campaignConfig.durationUnit === 'hour' ? 2160 : 90
 
   const performLaunch = () => {
     if (!selectedId) return
@@ -339,7 +340,7 @@ const AdminPaidPromotions: React.FC = () => {
   const handleLaunch = () => {
     if (!selectedId || !selected) return
     const payload = buildCampaignPayload()
-    if (!payload.durationDays || !payload.budgetTotal || !payload.impressions) {
+    if (!payload.durationValue || !payload.budgetTotal || !payload.impressions) {
       actionError('请填写投放时长、总预算与总曝光')
       return
     }
@@ -612,15 +613,30 @@ const AdminPaidPromotions: React.FC = () => {
                     商家已确认推广方案，请填写投放参数后点击「开启推广」。
                   </p>
                 <div className="admin-paid-promotions-config-grid">
-                  <label className="admin-field">
-                    <span>投放时长（天）</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={90}
-                      value={campaignConfig.durationDays}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, durationDays: e.target.value }))}
-                    />
+                  <label className="admin-field admin-field--duration">
+                    <span>投放时长</span>
+                    <div className="admin-paid-promotions-duration-row">
+                      <input
+                        type="number"
+                        min={1}
+                        max={durationMax}
+                        value={campaignConfig.durationValue}
+                        onChange={(e) => setCampaignConfig((prev) => ({ ...prev, durationValue: e.target.value }))}
+                      />
+                      <select
+                        value={campaignConfig.durationUnit}
+                        onChange={(e) =>
+                          setCampaignConfig((prev) => ({
+                            ...prev,
+                            durationUnit: e.target.value as 'minute' | 'hour' | 'day',
+                          }))
+                        }
+                      >
+                        <option value="minute">分钟</option>
+                        <option value="hour">小时</option>
+                        <option value="day">天</option>
+                      </select>
+                    </div>
                   </label>
                   <label className="admin-field">
                     <span>总预算 ($)</span>
@@ -659,25 +675,6 @@ const AdminPaidPromotions: React.FC = () => {
                       min={0}
                       value={campaignConfig.visits}
                       onChange={(e) => setCampaignConfig((prev) => ({ ...prev, visits: e.target.value }))}
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>总成交</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={campaignConfig.orders}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, orders: e.target.value }))}
-                    />
-                  </label>
-                  <label className="admin-field admin-field--wide">
-                    <span>总成交额 ($)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={campaignConfig.revenue}
-                      onChange={(e) => setCampaignConfig((prev) => ({ ...prev, revenue: e.target.value }))}
                     />
                   </label>
                   <button

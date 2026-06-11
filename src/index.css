@@ -25548,6 +25548,27 @@ button {
   min-width: 140px;
 }
 
+.admin-paid-promotions-duration-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 0.5rem;
+}
+
+.admin-paid-promotions-duration-row input,
+.admin-paid-promotions-duration-row select {
+  width: 100%;
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 0.35rem;
+  padding: 0 0.65rem;
+  font-size: 0.875rem;
+  background: #ffffff;
+}
+
+.admin-field--duration {
+  grid-column: span 1;
+}
+
 .admin-paid-promotions-live-summary {
   display: flex;
   gap: 1rem;
