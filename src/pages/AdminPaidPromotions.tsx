@@ -911,90 +911,79 @@ const AdminPaidPromotions: React.FC = () => {
         )}
       </section>
 
-      <section className="admin-pp-panel admin-pp-panel--create">
-        <div className="admin-pp-panel-head">
-          <div>
-            <h2 className="admin-pp-panel-title">开启付费推广</h2>
-            <p className="admin-pp-panel-desc">先选定店铺，再选择渠道并创建推广资格，商家确认目标后由您开启投放。</p>
-          </div>
-        </div>
-
-        <div className="admin-pp-create-layout">
-          <div className="admin-pp-create-step">
-            <span className="admin-pp-create-step-label">步骤 1 · 选择店铺</span>
-            <div className="admin-pp-create-search">
-              <input
-                type="text"
-                className="admin-pp-create-search-input"
-                value={shopSearchInput}
-                onChange={(e) => setShopSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    searchShops()
-                  }
-                }}
-                placeholder="输入店铺名称或店铺 ID"
-              />
-              <button
-                type="button"
-                className="admin-btn admin-btn--primary"
-                onClick={searchShops}
-                disabled={shopSearchLoading}
-              >
-                {shopSearchLoading ? '搜索中…' : '搜索'}
-              </button>
+      <section className="admin-pp-panel admin-pp-panel--workspace">
+        <div className="admin-pp-workspace">
+          <aside className="admin-pp-create-pane">
+            <div className="admin-pp-pane-head">
+              <h2 className="admin-pp-panel-title">开启付费推广</h2>
+              <p className="admin-pp-panel-desc">搜索店铺、选择渠道并创建推广资格。</p>
             </div>
 
-            {shopSearchResults.length > 0 ? (
-              <ul className="admin-pp-create-results">
-                {shopSearchResults.map((shop) => (
-                  <li key={shop.id}>
-                    <button
-                      type="button"
-                      className={`admin-pp-create-result${selectedShop?.id === shop.id ? ' admin-pp-create-result--active' : ''}`}
-                      onClick={() => selectShop(shop)}
-                    >
-                      <ShopAvatar name={shop.name} logo={shop.logo} size="md" />
-                      <span className="admin-pp-create-result-copy">
-                        <strong>{shop.name}</strong>
-                        <code>{shop.id}</code>
-                        {shop.ownerAccount ? <em>店主 {shop.ownerAccount}</em> : null}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="admin-pp-create-hint">搜索后将展示匹配店铺，点击即可选中。</p>
-            )}
-          </div>
-
-          <div className="admin-pp-create-step admin-pp-create-step--config">
-            <span className="admin-pp-create-step-label">步骤 2 · 配置并创建</span>
-
-            {selectedShop ? (
-              <div className="admin-pp-create-selected">
-                <ShopAvatar name={selectedShop.name} logo={selectedShop.logo} size="lg" />
-                <div className="admin-pp-create-selected-copy">
-                  <strong>{selectedShop.name}</strong>
-                  <code>{selectedShop.id}</code>
-                  {selectedShop.ownerAccount ? <span>店主 {selectedShop.ownerAccount}</span> : null}
-                </div>
-                <button type="button" className="admin-pp-create-clear" onClick={clearSelectedShop}>
-                  更换
+            <div className="admin-pp-create-stack">
+              <div className="admin-pp-create-search">
+                <input
+                  type="text"
+                  className="admin-pp-create-search-input"
+                  value={shopSearchInput}
+                  onChange={(e) => setShopSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      searchShops()
+                    }
+                  }}
+                  placeholder="店铺名称或 ID"
+                />
+                <button
+                  type="button"
+                  className="admin-btn admin-btn--primary"
+                  onClick={searchShops}
+                  disabled={shopSearchLoading}
+                >
+                  {shopSearchLoading ? '…' : '搜索'}
                 </button>
               </div>
-            ) : (
-              <div className="admin-pp-create-selected admin-pp-create-selected--empty">
-                <span>请先在左侧选择一家店铺</span>
-              </div>
-            )}
 
-            <div className="admin-pp-create-fields">
+              {shopSearchResults.length > 0 ? (
+                <ul className="admin-pp-create-results">
+                  {shopSearchResults.map((shop) => (
+                    <li key={shop.id}>
+                      <button
+                        type="button"
+                        className={`admin-pp-create-result${selectedShop?.id === shop.id ? ' admin-pp-create-result--active' : ''}`}
+                        onClick={() => selectShop(shop)}
+                      >
+                        <ShopAvatar name={shop.name} logo={shop.logo} size="md" />
+                        <span className="admin-pp-create-result-copy">
+                          <strong>{shop.name}</strong>
+                          <code>{shop.id}</code>
+                          {shop.ownerAccount ? <em>店主 {shop.ownerAccount}</em> : null}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {selectedShop ? (
+                <div className="admin-pp-create-selected">
+                  <ShopAvatar name={selectedShop.name} logo={selectedShop.logo} size="md" />
+                  <div className="admin-pp-create-selected-copy">
+                    <strong>{selectedShop.name}</strong>
+                    <code>{selectedShop.id}</code>
+                    {selectedShop.ownerAccount ? <span>店主 {selectedShop.ownerAccount}</span> : null}
+                  </div>
+                  <button type="button" className="admin-pp-create-clear" onClick={clearSelectedShop}>
+                    更换
+                  </button>
+                </div>
+              ) : (
+                <p className="admin-pp-create-hint">搜索并选择店铺后，再选推广渠道。</p>
+              )}
+
               <div className="admin-pp-create-field">
                 <span className="admin-pp-create-field-label">推广渠道</span>
-                <div className="admin-pp-channel-picker">
+                <div className="admin-pp-channel-picker admin-pp-channel-picker--compact">
                   {CHANNEL_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
@@ -1018,85 +1007,84 @@ const AdminPaidPromotions: React.FC = () => {
                 {creating ? '创建中…' : '创建推广资格'}
               </button>
             </div>
-          </div>
-        </div>
-      </section>
+          </aside>
 
-      <section className="admin-pp-panel admin-pp-panel--list">
-        <div className="admin-pp-list-head">
-          <div>
-            <h2 className="admin-pp-panel-title">推广列表</h2>
-            <p className="admin-pp-panel-desc">展示店铺头像、名称、ID 与店主账号，点击行或「详情」打开抽屉处理。</p>
-          </div>
-          <div className="admin-pp-list-toolbar">
-            <input
-              type="search"
-              className="admin-pp-list-search"
-              value={recordSearchInput}
-              onChange={(e) => setRecordSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  setRecordSearch(recordSearchInput.trim())
-                }
-              }}
-              placeholder="搜索店铺 / 店主账号"
-            />
-            <button
-              type="button"
-              className="admin-btn admin-btn--sm admin-btn--primary"
-              onClick={() => setRecordSearch(recordSearchInput.trim())}
-            >
-              搜索
-            </button>
-          </div>
-        </div>
-
-        <div className="admin-pp-status-tabs" role="tablist" aria-label="推广状态筛选">
-          {statusFilterOptions.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              role="tab"
-              aria-selected={statusFilter === opt.value}
-              className={`admin-pp-status-tab${statusFilter === opt.value ? ' admin-pp-status-tab--active' : ''}`}
-              onClick={() => setStatusFilter(opt.value)}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="admin-pp-list-head-row" aria-hidden="true">
-          <span className="admin-pp-list-col admin-pp-list-col--avatar">头像</span>
-          <span className="admin-pp-list-col admin-pp-list-col--shop">店铺信息</span>
-          <span className="admin-pp-list-col admin-pp-list-col--status">状态 / 渠道</span>
-          <span className="admin-pp-list-col admin-pp-list-col--config">推广配置</span>
-          <span className="admin-pp-list-col admin-pp-list-col--metrics">效果</span>
-          <span className="admin-pp-list-col admin-pp-list-col--actions">操作</span>
-        </div>
-
-        <div className="admin-pp-list-body">
-          {records.length === 0 ? (
-            <div className="admin-pp-empty">
-              <span className="admin-pp-empty-icon" aria-hidden="true">☰</span>
-              <p>暂无推广列表</p>
-              <span className="admin-pp-empty-hint">创建推广资格后，将在此展示全部店铺推广</span>
+          <div className="admin-pp-list-pane">
+            <div className="admin-pp-list-head">
+              <div className="admin-pp-pane-head">
+                <h2 className="admin-pp-panel-title">推广列表</h2>
+                <p className="admin-pp-panel-desc">点击行查看详情并处理推广。</p>
+              </div>
+              <div className="admin-pp-list-toolbar">
+                <input
+                  type="search"
+                  className="admin-pp-list-search"
+                  value={recordSearchInput}
+                  onChange={(e) => setRecordSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      setRecordSearch(recordSearchInput.trim())
+                    }
+                  }}
+                  placeholder="搜索店铺 / 店主"
+                />
+                <button
+                  type="button"
+                  className="admin-btn admin-btn--sm admin-btn--primary"
+                  onClick={() => setRecordSearch(recordSearchInput.trim())}
+                >
+                  搜索
+                </button>
+              </div>
             </div>
-          ) : (
-            records.map(({ promotion: item, metricsSummary }) => (
-              <PromotionListItem
-                key={item.id}
-                item={item}
-                metricsSummary={metricsSummary}
-                selected={selectedId === item.id}
-                onSelect={() => setSelectedId(item.id)}
-                onConfigure={() => setSelectedId(item.id)}
-                onPause={() => updateStatus(item.id, 'paused')}
-                onEnd={() => updateStatus(item.id, 'ended')}
-              />
-            ))
-          )}
+
+            <div className="admin-pp-status-tabs" role="tablist" aria-label="推广状态筛选">
+              {statusFilterOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === opt.value}
+                  className={`admin-pp-status-tab${statusFilter === opt.value ? ' admin-pp-status-tab--active' : ''}`}
+                  onClick={() => setStatusFilter(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="admin-pp-list-head-row" aria-hidden="true">
+              <span className="admin-pp-list-col admin-pp-list-col--avatar">头像</span>
+              <span className="admin-pp-list-col admin-pp-list-col--shop">店铺信息</span>
+              <span className="admin-pp-list-col admin-pp-list-col--status">状态 / 渠道</span>
+              <span className="admin-pp-list-col admin-pp-list-col--config">推广配置</span>
+              <span className="admin-pp-list-col admin-pp-list-col--metrics">效果</span>
+              <span className="admin-pp-list-col admin-pp-list-col--actions">操作</span>
+            </div>
+
+            <div className="admin-pp-list-body">
+              {records.length === 0 ? (
+                <div className="admin-pp-empty admin-pp-empty--inline">
+                  <span className="admin-pp-empty-icon" aria-hidden="true">☰</span>
+                  <p>暂无推广列表</p>
+                </div>
+              ) : (
+                records.map(({ promotion: item, metricsSummary }) => (
+                  <PromotionListItem
+                    key={item.id}
+                    item={item}
+                    metricsSummary={metricsSummary}
+                    selected={selectedId === item.id}
+                    onSelect={() => setSelectedId(item.id)}
+                    onConfigure={() => setSelectedId(item.id)}
+                    onPause={() => updateStatus(item.id, 'paused')}
+                    onEnd={() => updateStatus(item.id, 'ended')}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
