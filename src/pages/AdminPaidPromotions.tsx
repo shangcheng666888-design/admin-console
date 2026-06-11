@@ -3,6 +3,9 @@ import { api, apiBase } from '../api/client'
 import { useAdminToast } from '../hooks/useAdminToast'
 import { useAdminEditConfirm } from '../context/AdminEditConfirmContext'
 import AdminLoadingState from '../components/admin/AdminLoadingState'
+import paidTiktok from '../assets/paid-tiktok.png'
+import paidMeta from '../assets/paid-meta.png'
+import paidGoogle from '../assets/paid-google.png'
 
 type PaidChannel = 'tiktok' | 'meta' | 'google' | 'other'
 type PromoStatus = 'pending' | 'awaiting_launch' | 'active' | 'paused' | 'ended' | 'completed'
@@ -85,12 +88,19 @@ function shopDisplayName(item: Pick<PromotionRow, 'shopName' | 'shopId'>): strin
   return item.shopName ?? item.shopId
 }
 
-const CHANNEL_OPTIONS: { value: PaidChannel; label: string }[] = [
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'meta', label: 'Meta' },
-  { value: 'google', label: 'Google' },
+const CHANNEL_OPTIONS: { value: PaidChannel; label: string; icon?: string }[] = [
+  { value: 'tiktok', label: 'TikTok', icon: paidTiktok },
+  { value: 'meta', label: 'Meta', icon: paidMeta },
+  { value: 'google', label: 'Google', icon: paidGoogle },
   { value: 'other', label: '其他' },
 ]
+
+const CHANNEL_META: Record<PaidChannel, { label: string; icon?: string }> = {
+  tiktok: { label: 'TikTok', icon: paidTiktok },
+  meta: { label: 'Meta', icon: paidMeta },
+  google: { label: 'Google', icon: paidGoogle },
+  other: { label: '其他' },
+}
 
 const STATUS_LABEL: Record<PromoStatus, string> = {
   pending: '待商家配置',
@@ -163,12 +173,14 @@ function progressPct(current: number, total: number) {
   return Math.min(100, Math.round((current / total) * 100))
 }
 
-function channelLabel(channel: PaidChannel): string {
-  return CHANNEL_OPTIONS.find((c) => c.value === channel)?.label ?? channel
-}
-
 function ChannelBadge({ channel }: { channel: PaidChannel }) {
-  return <span className={`admin-pp-channel admin-pp-channel--${channel}`}>{channelLabel(channel)}</span>
+  const meta = CHANNEL_META[channel]
+  return (
+    <span className={`admin-pp-channel admin-pp-channel--${channel}`}>
+      {meta.icon ? <img src={meta.icon} alt="" className="admin-pp-channel-icon" /> : null}
+      <span>{meta.label}</span>
+    </span>
+  )
 }
 
 function StatusBadge({ status }: { status: PromoStatus }) {
@@ -201,13 +213,54 @@ function ShopAvatar({
   logo?: string | null
   size?: 'sm' | 'md' | 'lg'
 }) {
+  const [imgFailed, setImgFailed] = useState(false)
   const url = resolveShopLogoUrl(logo)
   const initial = (name || '?').slice(0, 1).toUpperCase()
+  const showImage = Boolean(url) && !imgFailed
+
   return (
     <span className={`admin-pp-shop-avatar admin-pp-shop-avatar--${size}`} aria-hidden="true">
-      {url ? <img src={url} alt="" /> : <span>{initial}</span>}
+      {showImage ? (
+        <img src={url} alt="" onError={() => setImgFailed(true)} />
+      ) : (
+        <span className="admin-pp-shop-avatar-fallback">{initial}</span>
+      )}
     </span>
   )
+}
+
+async function enrichRecordsWithShopLogos(items: PromotionRecordItem[]): Promise<PromotionRecordItem[]> {
+  const shopIds = [
+    ...new Set(
+      items
+        .filter(({ promotion }) => !resolveShopLogoUrl(promotion.shopLogo))
+        .map(({ promotion }) => promotion.shopId),
+    ),
+  ]
+  if (shopIds.length === 0) return items
+
+  const logoByShop = new Map<string, string>()
+  await Promise.all(
+    shopIds.map(async (shopId) => {
+      try {
+        const res = await api.get<{ list: Array<{ id: string; logo?: string | null }> }>(
+          `/api/shops?shop=${encodeURIComponent(shopId)}`,
+        )
+        const logo = res.list?.[0]?.logo
+        if (logo) logoByShop.set(shopId, logo)
+      } catch {
+        /* ignore single shop lookup failures */
+      }
+    }),
+  )
+
+  if (logoByShop.size === 0) return items
+  return items.map((item) => {
+    if (resolveShopLogoUrl(item.promotion.shopLogo)) return item
+    const logo = logoByShop.get(item.promotion.shopId) ?? null
+    if (!logo) return item
+    return { ...item, promotion: { ...item.promotion, shopLogo: logo } }
+  })
 }
 
 function PromotionListItem({
@@ -243,8 +296,10 @@ function PromotionListItem({
         }
       }}
     >
-      <div className="admin-pp-list-col admin-pp-list-col--shop">
+      <div className="admin-pp-list-col admin-pp-list-col--avatar">
         <ShopAvatar name={name} logo={item.shopLogo} size="lg" />
+      </div>
+      <div className="admin-pp-list-col admin-pp-list-col--shop">
         <div className="admin-pp-list-shop-copy">
           <strong className="admin-pp-list-shop-name">{name}</strong>
           <code className="admin-pp-list-shop-id">{item.shopId}</code>
@@ -376,7 +431,6 @@ const AdminPaidPromotions: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<ShopSearchResult | null>(null)
   const [createForm, setCreateForm] = useState({
     channel: 'tiktok' as PaidChannel,
-    adminNote: '',
   })
   const [runningCampaigns, setRunningCampaigns] = useState<RunningCampaignItem[]>([])
   const [runningLoading, setRunningLoading] = useState(false)
@@ -421,13 +475,15 @@ const AdminPaidPromotions: React.FC = () => {
         const res = await api.get<{ list: PromotionRecordItem[] }>(
           `/api/admin/paid-promotions/records${query ? `?${query}` : ''}`,
         )
-        setRecords(Array.isArray(res.list) ? res.list : [])
+        const rawList = Array.isArray(res.list) ? res.list : []
+        setRecords(await enrichRecordsWithShopLogos(rawList))
       } catch (recordsError) {
         const legacyRes = await api.get<{ list: PromotionRow[] }>(
           `/api/admin/paid-promotions${query ? `?${query}` : ''}`,
         )
         const legacyList = Array.isArray(legacyRes.list) ? legacyRes.list : []
-        setRecords(legacyList.map((promotion) => ({ promotion, metricsSummary: null })))
+        const wrapped = legacyList.map((promotion) => ({ promotion, metricsSummary: null }))
+        setRecords(await enrichRecordsWithShopLogos(wrapped))
         if (legacyList.length === 0 && recordsError) {
           throw recordsError
         }
@@ -567,11 +623,10 @@ const AdminPaidPromotions: React.FC = () => {
       .post('/api/admin/paid-promotions', {
         shopId: selectedShop.id,
         channel: createForm.channel,
-        adminNote: createForm.adminNote.trim() || undefined,
       })
       .then(() => {
         actionSuccess('已创建付费推广资格，等待商家配置')
-        setCreateForm({ channel: 'tiktok', adminNote: '' })
+        setCreateForm({ channel: 'tiktok' })
         setSelectedShop(null)
         setShopSearchInput('')
         setShopSearchResults([])
@@ -947,22 +1002,12 @@ const AdminPaidPromotions: React.FC = () => {
                       className={`admin-pp-channel-option admin-pp-channel-option--${opt.value}${createForm.channel === opt.value ? ' admin-pp-channel-option--active' : ''}`}
                       onClick={() => setCreateForm((prev) => ({ ...prev, channel: opt.value }))}
                     >
-                      {opt.label}
+                      {opt.icon ? <img src={opt.icon} alt="" className="admin-pp-channel-option-icon" /> : null}
+                      <span>{opt.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
-
-              <label className="admin-pp-create-field">
-                <span className="admin-pp-create-field-label">备注（可选）</span>
-                <input
-                  type="text"
-                  className="admin-pp-create-note"
-                  value={createForm.adminNote}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, adminNote: e.target.value }))}
-                  placeholder="例如：TikTok 套餐 A"
-                />
-              </label>
 
               <button
                 type="button"
@@ -1023,11 +1068,12 @@ const AdminPaidPromotions: React.FC = () => {
         </div>
 
         <div className="admin-pp-list-head-row" aria-hidden="true">
-          <span>店铺信息</span>
-          <span>状态 / 渠道</span>
-          <span>推广配置</span>
-          <span>效果</span>
-          <span>操作</span>
+          <span className="admin-pp-list-col admin-pp-list-col--avatar">头像</span>
+          <span className="admin-pp-list-col admin-pp-list-col--shop">店铺信息</span>
+          <span className="admin-pp-list-col admin-pp-list-col--status">状态 / 渠道</span>
+          <span className="admin-pp-list-col admin-pp-list-col--config">推广配置</span>
+          <span className="admin-pp-list-col admin-pp-list-col--metrics">效果</span>
+          <span className="admin-pp-list-col admin-pp-list-col--actions">操作</span>
         </div>
 
         <div className="admin-pp-list-body">

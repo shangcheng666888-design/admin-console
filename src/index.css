@@ -25558,15 +25558,26 @@ button {
 }
 
 .admin-pp-channel-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   border: 1px solid #e2e8f0;
-  border-radius: 999px;
+  border-radius: 12px;
   background: #ffffff;
-  padding: 0.4rem 0.75rem;
+  padding: 0.45rem 0.8rem;
   font-size: 0.8125rem;
   font-weight: 600;
   color: #475569;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+.admin-pp-channel-option-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .admin-pp-channel-option--active {
@@ -25598,10 +25609,17 @@ button {
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.12);
 }
 
-.admin-pp-shop-avatar img {
+.admin-pp-shop-avatar img,
+.admin-pp-shop-avatar-fallback {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.admin-pp-shop-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .admin-pp-shop-avatar--sm { width: 32px; height: 32px; font-size: 0.75rem; border-radius: 8px; }
@@ -25624,16 +25642,40 @@ button {
   align-items: center;
 }
 
-.admin-pp-list-head-row {
+.admin-pp-list-head-row,
+.admin-pp-list-item {
+  --pp-list-cols: 52px minmax(180px, 1.25fr) minmax(128px, 0.9fr) minmax(150px, 1fr) minmax(96px, 0.72fr) minmax(120px, 0.82fr);
   display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) minmax(120px, 0.9fr) minmax(140px, 1fr) minmax(100px, 0.7fr) minmax(120px, 0.8fr);
+  grid-template-columns: var(--pp-list-cols);
   gap: 0.75rem;
-  padding: 0 1rem 0.55rem;
+  align-items: center;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.admin-pp-list-head-row {
+  padding-top: 0;
+  padding-bottom: 0.55rem;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #94a3b8;
+}
+
+.admin-pp-list-head-row > span {
+  display: flex;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+.admin-pp-list-head-row .admin-pp-list-col--avatar,
+.admin-pp-list-head-row .admin-pp-list-col--status,
+.admin-pp-list-head-row .admin-pp-list-col--config,
+.admin-pp-list-head-row .admin-pp-list-col--metrics,
+.admin-pp-list-head-row .admin-pp-list-col--actions {
+  text-align: center;
+  justify-content: center;
 }
 
 .admin-pp-list-body {
@@ -25643,16 +25685,13 @@ button {
 }
 
 .admin-pp-list-item {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) minmax(120px, 0.9fr) minmax(140px, 1fr) minmax(100px, 0.7fr) minmax(120px, 0.8fr);
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.85rem 1rem;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
   border: 1px solid #e8edf5;
   border-radius: 14px;
   background: #ffffff;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .admin-pp-list-item:hover {
@@ -25668,12 +25707,17 @@ button {
 
 .admin-pp-list-col {
   min-width: 0;
+  display: flex;
+}
+
+.admin-pp-list-col--avatar {
+  justify-content: center;
 }
 
 .admin-pp-list-col--shop {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .admin-pp-list-shop-copy {
@@ -25692,9 +25736,10 @@ button {
 }
 
 .admin-pp-list-col--status {
-  display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 0.35rem;
 }
 
@@ -25704,8 +25749,9 @@ button {
 }
 
 .admin-pp-list-col--config {
-  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: 0.35rem;
 }
 
@@ -25731,8 +25777,9 @@ button {
 }
 
 .admin-pp-list-col--metrics {
-  display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0.25rem;
 }
 
@@ -25759,10 +25806,10 @@ button {
 }
 
 .admin-pp-list-col--actions {
-  display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
 }
 
 .admin-pp-list-action {
@@ -25879,11 +25926,20 @@ button {
 .admin-pp-channel {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   border-radius: 999px;
-  padding: 0.12rem 0.5rem;
+  padding: 0.12rem 0.55rem 0.12rem 0.35rem;
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.admin-pp-channel-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .admin-pp-channel--tiktok { background: #fce7f3; color: #be185d; }
@@ -26846,11 +26902,24 @@ button {
   }
 
   .admin-pp-list-item {
-    grid-template-columns: 1fr;
-    align-items: flex-start;
+    grid-template-columns: 52px 1fr;
+    grid-template-areas:
+      'avatar shop'
+      'avatar status'
+      'avatar config'
+      'avatar metrics'
+      'avatar actions';
+    row-gap: 0.45rem;
+    align-items: start;
   }
 
+  .admin-pp-list-col--avatar { grid-area: avatar; }
+  .admin-pp-list-col--shop { grid-area: shop; }
+  .admin-pp-list-col--status { grid-area: status; align-items: flex-start; text-align: left; }
+  .admin-pp-list-col--config { grid-area: config; justify-content: flex-start; }
+  .admin-pp-list-col--metrics { grid-area: metrics; align-items: flex-start; }
   .admin-pp-list-col--actions {
+    grid-area: actions;
     justify-content: flex-start;
     width: 100%;
     padding-top: 0.35rem;
