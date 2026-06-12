@@ -151,6 +151,32 @@ function formatWarehouseProductId(item: Pick<PromotionRow, 'targetProductId' | '
   return item.targetListingId?.trim() || '—'
 }
 
+function formatPromotionTargetBrief(
+  item: Pick<PromotionRow, 'targetType' | 'targetProductId' | 'targetListingId'>,
+): string {
+  if (item.targetType === 'shop') return '整店推广'
+  if (item.targetType === 'product') {
+    const id = formatWarehouseProductId(item)
+    return id !== '—' ? `单品推广 · ID ${id}` : '单品推广'
+  }
+  return '待商家选择'
+}
+
+function formatPromotionTargetMonitor(
+  item: Pick<PromotionRow, 'targetType' | 'targetProductId' | 'targetListingId' | 'targetProductTitle'>,
+): { label: string; title?: string } {
+  if (item.targetType === 'shop') return { label: '整店' }
+  if (item.targetType === 'product') {
+    const id = formatWarehouseProductId(item)
+    const fullTitle = item.targetProductTitle?.trim()
+    return {
+      label: id !== '—' ? `单品 · ID ${id}` : '单品',
+      title: fullTitle || undefined,
+    }
+  }
+  return { label: '—' }
+}
+
 
 function formatDateLabel(date: string): string {
   const d = new Date(`${date}T00:00:00`)
@@ -176,7 +202,7 @@ function formatAudienceLabel(value: string | null | undefined): string {
 }
 
 function formatConfigSummary(item: PromotionRow): string {
-  const parts: string[] = [formatTargetLabel(item)]
+  const parts: string[] = [formatPromotionTargetBrief(item)]
   if (item.targetRegion) {
     parts.push(REGION_LABEL[item.targetRegion] ?? item.targetRegion)
   }
@@ -829,13 +855,14 @@ const AdminPaidPromotions: React.FC = () => {
                     </div>
                     <div>
                       <span>推广目标</span>
-                      <strong>
-                        {promo.targetType === 'product'
-                          ? promo.targetProductTitle ?? '单品'
-                          : promo.targetType === 'shop'
-                            ? '整店'
-                            : '—'}
-                      </strong>
+                      {(() => {
+                        const target = formatPromotionTargetMonitor(promo)
+                        return (
+                          <strong className="admin-pp-running-target" title={target.title}>
+                            {target.label}
+                          </strong>
+                        )
+                      })()}
                     </div>
                     <div>
                       <span>投放地区</span>

@@ -27010,6 +27010,14 @@ button {
   color: #0f172a;
 }
 
+.admin-pp-running-target {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-paid-promotions-running-progress-block {
   display: flex;
   flex-direction: column;
