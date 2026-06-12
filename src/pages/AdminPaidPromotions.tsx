@@ -110,7 +110,7 @@ const STATUS_LABEL: Record<PromoStatus, string> = {
   awaiting_launch: '待开启推广',
   active: '推广中',
   paused: '已暂停',
-  ended: '已结束',
+  ended: '已强制结束',
   completed: '已完成',
 }
 
@@ -722,9 +722,9 @@ const AdminPaidPromotions: React.FC = () => {
         confirmLabel: '确认恢复',
       },
       ended: {
-        title: '结束推广',
-        message: '结束后本次推广将结案，无法恢复。确认结束？',
-        confirmLabel: '确认结束',
+        title: '强制结束推广',
+        message: '将按当前实际投放进度结案：已释放多少数据就结算多少，不会补满预设。结束后不可恢复。',
+        confirmLabel: '确认强制结束',
       },
     }
     const custom = statusConfirm[status]
