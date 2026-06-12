@@ -1166,6 +1166,7 @@ const AdminPaidPromotions: React.FC = () => {
               ))}
             </div>
 
+            <div className="admin-pp-list-table-wrap">
             <div className="admin-pp-list-head-row" aria-hidden="true">
               <span className="admin-pp-list-col admin-pp-list-col--shop">店铺信息</span>
               <span className="admin-pp-list-col admin-pp-list-col--status">状态</span>
@@ -1199,6 +1200,7 @@ const AdminPaidPromotions: React.FC = () => {
                   />
                 ))
               )}
+            </div>
             </div>
 
             <div className="admin-pp-list-pagination" aria-label="推广列表分页">

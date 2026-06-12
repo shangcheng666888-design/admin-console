@@ -25370,9 +25370,10 @@ button {
 
 .admin-pp-workspace {
   --pp-list-visible-rows: 4;
-  --pp-list-row-height: 3.75rem;
+  --pp-list-row-height: 3.5rem;
+  --pp-list-min-width: 920px;
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
   align-items: start;
   min-height: 0;
 }
@@ -25708,8 +25709,23 @@ button {
     var(--pp-list-row-height) * var(--pp-list-visible-rows) + 0.5rem * (var(--pp-list-visible-rows) - 1)
   );
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
   padding-right: 0.15rem;
+}
+
+.admin-pp-list-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.admin-pp-list-table-wrap .admin-pp-list-head-row {
+  min-width: var(--pp-list-min-width);
+}
+
+.admin-pp-list-table-wrap .admin-pp-list-item {
+  min-width: var(--pp-list-min-width);
 }
 
 .admin-pp-list-pagination {
@@ -25765,10 +25781,10 @@ button {
 
 .admin-pp-list-head-row,
 .admin-pp-list-item {
-  --pp-list-cols: minmax(124px, 0.92fr) minmax(68px, 0.46fr) minmax(68px, 0.46fr) minmax(108px, 0.98fr) minmax(80px, 0.56fr) minmax(212px, 1.22fr);
+  --pp-list-cols: minmax(130px, 1.05fr) 74px 74px minmax(148px, 1.2fr) 92px 248px;
   display: grid;
   grid-template-columns: var(--pp-list-cols);
-  gap: 0.65rem;
+  gap: 0.55rem;
   align-items: center;
   padding-left: 1rem;
   padding-right: 1rem;
@@ -25806,15 +25822,17 @@ button {
 }
 
 .admin-pp-list-item {
-  min-height: var(--pp-list-row-height, 3.75rem);
-  height: auto;
-  padding-top: 0.55rem;
-  padding-bottom: 0.55rem;
+  min-height: var(--pp-list-row-height, 3.5rem);
+  height: var(--pp-list-row-height, 3.5rem);
+  max-height: var(--pp-list-row-height, 3.5rem);
+  padding-top: 0;
+  padding-bottom: 0;
   border: 1px solid #e8edf5;
   border-radius: 14px;
   background: #ffffff;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
 }
 
 .admin-pp-list-item:hover {
@@ -25862,11 +25880,11 @@ button {
 
 .admin-pp-list-col--status,
 .admin-pp-list-col--channel {
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .admin-pp-list-col--config {
@@ -25876,22 +25894,21 @@ button {
 
 .admin-pp-list-config-summary {
   margin: 0;
+  width: 100%;
   font-size: 0.8125rem;
   color: #334155;
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.35;
+  white-space: nowrap;
   overflow: hidden;
-  word-break: break-word;
+  text-overflow: ellipsis;
 }
 
 .admin-pp-list-col--budget {
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   text-align: center;
-  padding-top: 0.15rem;
+  flex-shrink: 0;
 }
 
 .admin-pp-list-budget {
@@ -25910,38 +25927,29 @@ button {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  align-self: center;
-  width: 100%;
-  padding-top: 0;
-}
-
-.admin-pp-list-col--actions:has(.admin-pp-list-action:nth-child(4)) {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: flex-end;
   gap: 0.32rem;
+  align-self: center;
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  padding-top: 0;
 }
 
 .admin-pp-list-action {
   flex: 0 0 auto;
   width: auto;
-  min-width: 3.35rem;
-  height: 30px;
-  padding: 0 0.62rem;
+  min-width: 0;
+  height: 28px;
+  padding: 0 0.55rem;
   border-radius: 8px;
   border: 1px solid #dbe3f0;
   background: #ffffff;
   color: #334155;
-  font-size: 0.73rem;
+  font-size: 0.71rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-}
-
-.admin-pp-list-col--actions:has(.admin-pp-list-action:nth-child(4)) .admin-pp-list-action {
-  width: 100%;
-  min-width: 0;
 }
 
 .admin-pp-list-action--primary {
@@ -27201,50 +27209,6 @@ button {
 
   .admin-pp-create-layout {
     grid-template-columns: 1fr;
-  }
-
-  .admin-pp-list-head-row {
-    display: none;
-  }
-
-  .admin-pp-list-item {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      'shop'
-      'status'
-      'channel'
-      'config'
-      'budget'
-      'actions';
-    row-gap: 0.45rem;
-    align-items: start;
-  }
-
-  .admin-pp-list-col--shop { grid-area: shop; }
-  .admin-pp-list-col--status { grid-area: status; align-items: flex-start; text-align: left; }
-  .admin-pp-list-col--channel { grid-area: channel; align-items: flex-start; text-align: left; }
-  .admin-pp-list-col--config { grid-area: config; }
-  .admin-pp-list-col--budget { grid-area: budget; align-items: flex-start; text-align: left; }
-  .admin-pp-list-col--actions {
-    grid-area: actions;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    width: 100%;
-    padding-top: 0.35rem;
-    border-top: 1px solid #f1f5f9;
-  }
-
-  .admin-pp-list-col--actions:has(.admin-pp-list-action:nth-child(4)) {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .admin-pp-list-action {
-    min-width: 4.5rem;
-    height: 32px;
-    font-size: 0.75rem;
-    padding: 0 0.75rem;
   }
 }
 
