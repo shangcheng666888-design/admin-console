@@ -25370,7 +25370,7 @@ button {
 
 .admin-pp-workspace {
   --pp-list-visible-rows: 4;
-  --pp-list-row-height: 3.25rem;
+  --pp-list-row-height: 4.5rem;
   display: grid;
   grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   align-items: start;
@@ -25765,7 +25765,7 @@ button {
 
 .admin-pp-list-head-row,
 .admin-pp-list-item {
-  --pp-list-cols: minmax(148px, 0.95fr) minmax(80px, 0.55fr) minmax(80px, 0.55fr) minmax(140px, 1fr) minmax(96px, 0.68fr) minmax(108px, 0.72fr);
+  --pp-list-cols: minmax(136px, 1fr) minmax(72px, 0.5fr) minmax(72px, 0.5fr) minmax(120px, 1.05fr) minmax(88px, 0.62fr) minmax(148px, 0.92fr);
   display: grid;
   grid-template-columns: var(--pp-list-cols);
   gap: 0.65rem;
@@ -25806,7 +25806,8 @@ button {
 }
 
 .admin-pp-list-item {
-  min-height: var(--pp-list-row-height, 3.25rem);
+  min-height: var(--pp-list-row-height, 4.5rem);
+  height: auto;
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
   border: 1px solid #e8edf5;
@@ -25906,23 +25907,35 @@ button {
 }
 
 .admin-pp-list-col--actions {
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 0.05rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  justify-content: stretch;
+  align-content: center;
+  align-self: center;
+  width: 100%;
+  padding-top: 0;
 }
 
 .admin-pp-list-action {
-  height: 30px;
-  padding: 0 0.65rem;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 0.45rem;
   border-radius: 8px;
   border: 1px solid #dbe3f0;
   background: #ffffff;
   color: #334155;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.admin-pp-list-action:only-child {
+  grid-column: 1 / -1;
+  max-width: 5.75rem;
+  justify-self: center;
 }
 
 .admin-pp-list-action--primary {
@@ -27208,10 +27221,15 @@ button {
   .admin-pp-list-col--budget { grid-area: budget; align-items: flex-start; text-align: left; }
   .admin-pp-list-col--actions {
     grid-area: actions;
-    justify-content: flex-start;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
     padding-top: 0.35rem;
     border-top: 1px solid #f1f5f9;
+  }
+
+  .admin-pp-list-action {
+    height: 32px;
+    font-size: 0.75rem;
   }
 }
 
