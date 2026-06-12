@@ -38,6 +38,7 @@ interface PromotionRow {
   presetRevenue: number | null
   campaignStartAt: string | null
   campaignEndAt: string | null
+  pausedAt: string | null
   merchantConfirmedAt: string | null
   activatedAt: string | null
   createdAt: string
@@ -326,6 +327,7 @@ function PromotionListItem({
   onSelect,
   onConfigure,
   onPause,
+  onResume,
   onEnd,
 }: {
   item: PromotionRow
@@ -333,6 +335,7 @@ function PromotionListItem({
   onSelect: () => void
   onConfigure: () => void
   onPause: () => void
+  onResume: () => void
   onEnd: () => void
 }) {
   const name = shopDisplayName(item)
@@ -397,6 +400,16 @@ function PromotionListItem({
           <>
             <button type="button" className="admin-pp-list-action" onClick={onPause}>
               暂停
+            </button>
+            <button type="button" className="admin-pp-list-action admin-pp-list-action--ghost" onClick={onEnd}>
+              结束
+            </button>
+          </>
+        ) : null}
+        {item.status === 'paused' && hasLaunchedCampaign(item) ? (
+          <>
+            <button type="button" className="admin-pp-list-action admin-pp-list-action--primary" onClick={onResume}>
+              恢复
             </button>
             <button type="button" className="admin-pp-list-action admin-pp-list-action--ghost" onClick={onEnd}>
               结束
@@ -697,11 +710,29 @@ const AdminPaidPromotions: React.FC = () => {
   }
 
   const updateStatus = (id: number, status: PromoStatus) => {
+    const statusConfirm: Partial<Record<PromoStatus, { title: string; message: string; confirmLabel: string }>> = {
+      paused: {
+        title: '暂停推广',
+        message: '暂停后数据释放将冻结在当前进度，投放计时也会暂停。可随时恢复并继续释放剩余数据。',
+        confirmLabel: '确认暂停',
+      },
+      active: {
+        title: '恢复推广',
+        message: '恢复后将从暂停时的进度继续释放剩余数据，暂停期间不计入投放时长。',
+        confirmLabel: '确认恢复',
+      },
+      ended: {
+        title: '结束推广',
+        message: '结束后本次推广将结案，无法恢复。确认结束？',
+        confirmLabel: '确认结束',
+      },
+    }
+    const custom = statusConfirm[status]
     const label = STATUS_LABEL[status]
     requestEditConfirm({
-      title: '更新推广状态',
-      message: `确认将推广状态更新为「${label}」？`,
-      confirmLabel: '确认更新',
+      title: custom?.title ?? '更新推广状态',
+      message: custom?.message ?? `确认将推广状态更新为「${label}」？`,
+      confirmLabel: custom?.confirmLabel ?? '确认更新',
       onConfirm: () => performUpdateStatus(id, status),
     })
   }
@@ -1114,6 +1145,7 @@ const AdminPaidPromotions: React.FC = () => {
                     onSelect={() => setSelectedId(item.id)}
                     onConfigure={() => setSelectedId(item.id)}
                     onPause={() => updateStatus(item.id, 'paused')}
+                    onResume={() => updateStatus(item.id, 'active')}
                     onEnd={() => updateStatus(item.id, 'ended')}
                   />
                 ))
@@ -1444,6 +1476,24 @@ const AdminPaidPromotions: React.FC = () => {
                     onClick={() => updateStatus(selected.id, 'paused')}
                   >
                     暂停
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-pp-drawer-btn admin-pp-drawer-btn--secondary"
+                    onClick={() => updateStatus(selected.id, 'ended')}
+                  >
+                    结束
+                  </button>
+                </>
+              ) : null}
+              {selected.status === 'paused' && hasLaunchedCampaign(selected) ? (
+                <>
+                  <button
+                    type="button"
+                    className="admin-pp-drawer-btn"
+                    onClick={() => updateStatus(selected.id, 'active')}
+                  >
+                    恢复推广
                   </button>
                   <button
                     type="button"
