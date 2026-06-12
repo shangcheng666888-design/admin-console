@@ -98,7 +98,7 @@ const CHANNEL_OPTIONS: { value: PaidChannel; label: string; icon?: string }[] = 
   { value: 'other', label: '其他' },
 ]
 
-const RECORDS_PAGE_SIZE = 8
+const RECORDS_PAGE_SIZE = 4
 
 const CHANNEL_META: Record<PaidChannel, { label: string; icon?: string }> = {
   tiktok: { label: 'TikTok', icon: paidTiktok },
