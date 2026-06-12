@@ -25388,6 +25388,7 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   padding: 1rem 1.1rem 1.1rem;
 }
 
@@ -25691,11 +25692,57 @@ button {
 }
 
 .admin-pp-list-pane .admin-pp-list-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  height: min(560px, calc(100vh - 18rem));
   max-height: min(560px, calc(100vh - 18rem));
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 0.15rem;
+}
+
+.admin-pp-list-pagination {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.admin-pp-list-page-meta {
+  flex: 1;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.admin-pp-list-page-btn {
+  min-width: 5.5rem;
+  padding: 0.42rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.admin-pp-list-page-btn:hover:not(:disabled) {
+  border-color: #c7d2fe;
+  color: #4f46e5;
+  background: #f8f9ff;
+}
+
+.admin-pp-list-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .admin-pp-list-toolbar {

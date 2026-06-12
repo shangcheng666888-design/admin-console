@@ -98,6 +98,8 @@ const CHANNEL_OPTIONS: { value: PaidChannel; label: string; icon?: string }[] = 
   { value: 'other', label: '其他' },
 ]
 
+const RECORDS_PAGE_SIZE = 8
+
 const CHANNEL_META: Record<PaidChannel, { label: string; icon?: string }> = {
   tiktok: { label: 'TikTok', icon: paidTiktok },
   meta: { label: 'Meta', icon: paidMeta },
@@ -454,6 +456,9 @@ const AdminPaidPromotions: React.FC = () => {
   const [launching, setLaunching] = useState(false)
   const [creating, setCreating] = useState(false)
   const [records, setRecords] = useState<PromotionRecordItem[]>([])
+  const [recordTotal, setRecordTotal] = useState(0)
+  const [recordPage, setRecordPage] = useState(1)
+  const [statusCounts, setStatusCounts] = useState<Partial<Record<PromoStatus, number>>>({})
   const [statusFilter, setStatusFilter] = useState<'all' | PromoStatus>('all')
   const [recordSearch, setRecordSearch] = useState('')
   const [recordSearchInput, setRecordSearchInput] = useState('')
@@ -493,15 +498,20 @@ const AdminPaidPromotions: React.FC = () => {
     [records, selectedId],
   )
 
+  const recordTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(recordTotal / RECORDS_PAGE_SIZE)),
+    [recordTotal],
+  )
+
   const pageStats = useMemo(
     () => ({
-      total: records.length,
+      total: recordTotal,
       running: runningCampaigns.length,
-      active: records.filter((item) => item.promotion.status === 'active').length,
-      awaiting: records.filter((item) => item.promotion.status === 'awaiting_launch').length,
-      pending: records.filter((item) => item.promotion.status === 'pending').length,
+      active: statusCounts.active ?? 0,
+      awaiting: statusCounts.awaiting_launch ?? 0,
+      pending: statusCounts.pending ?? 0,
     }),
-    [records, runningCampaigns],
+    [recordTotal, runningCampaigns, statusCounts],
   )
 
   const statusFilterOptions: Array<{ value: 'all' | PromoStatus; label: string }> = [
@@ -518,20 +528,40 @@ const AdminPaidPromotions: React.FC = () => {
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (recordSearch.trim()) params.set('search', recordSearch.trim())
+      params.set('limit', String(RECORDS_PAGE_SIZE))
+      params.set('offset', String((recordPage - 1) * RECORDS_PAGE_SIZE))
       const query = params.toString()
       try {
-        const res = await api.get<{ list: PromotionRecordItem[] }>(
-          `/api/admin/paid-promotions/records${query ? `?${query}` : ''}`,
-        )
+        const res = await api.get<{
+          list: PromotionRecordItem[]
+          total?: number
+          statusCounts?: Partial<Record<PromoStatus, number>>
+        }>(`/api/admin/paid-promotions/records?${query}`)
         const rawList = Array.isArray(res.list) ? res.list : []
         setRecords(await enrichRecordsWithShopLogos(rawList))
+        setRecordTotal(typeof res.total === 'number' ? res.total : rawList.length)
+        setStatusCounts(res.statusCounts ?? {})
       } catch (recordsError) {
+        const legacyParams = new URLSearchParams()
+        if (statusFilter !== 'all') legacyParams.set('status', statusFilter)
+        if (recordSearch.trim()) legacyParams.set('search', recordSearch.trim())
+        const legacyQuery = legacyParams.toString()
         const legacyRes = await api.get<{ list: PromotionRow[] }>(
-          `/api/admin/paid-promotions${query ? `?${query}` : ''}`,
+          `/api/admin/paid-promotions${legacyQuery ? `?${legacyQuery}` : ''}`,
         )
         const legacyList = Array.isArray(legacyRes.list) ? legacyRes.list : []
         const wrapped = legacyList.map((promotion) => ({ promotion, metricsSummary: null }))
-        setRecords(await enrichRecordsWithShopLogos(wrapped))
+        const enriched = await enrichRecordsWithShopLogos(wrapped)
+        const legacyTotal = enriched.length
+        const legacyCounts = enriched.reduce<Partial<Record<PromoStatus, number>>>((acc, item) => {
+          const key = item.promotion.status
+          acc[key] = (acc[key] ?? 0) + 1
+          return acc
+        }, {})
+        const start = (recordPage - 1) * RECORDS_PAGE_SIZE
+        setRecords(enriched.slice(start, start + RECORDS_PAGE_SIZE))
+        setRecordTotal(legacyTotal)
+        setStatusCounts(legacyCounts)
         if (legacyList.length === 0 && recordsError) {
           throw recordsError
         }
@@ -539,10 +569,12 @@ const AdminPaidPromotions: React.FC = () => {
     } catch (e) {
       loadError(e, '加载推广记录失败')
       setRecords([])
+      setRecordTotal(0)
+      setStatusCounts({})
     } finally {
       setLoading(false)
     }
-  }, [loadError, statusFilter, recordSearch])
+  }, [loadError, statusFilter, recordSearch, recordPage])
 
   const syncCampaignConfigFromPromotion = useCallback((promotion: PromotionRow) => {
     setCampaignConfig({
@@ -592,6 +624,12 @@ const AdminPaidPromotions: React.FC = () => {
       setRunningLoading(false)
     }
   }, [loadError])
+
+  useEffect(() => {
+    if (recordPage > recordTotalPages) {
+      setRecordPage(recordTotalPages)
+    }
+  }, [recordPage, recordTotalPages])
 
   useEffect(() => {
     fetchRecords()
@@ -1092,6 +1130,7 @@ const AdminPaidPromotions: React.FC = () => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
                       setRecordSearch(recordSearchInput.trim())
+                      setRecordPage(1)
                     }
                   }}
                   placeholder="搜索店铺 / 店主"
@@ -1099,7 +1138,10 @@ const AdminPaidPromotions: React.FC = () => {
                 <button
                   type="button"
                   className="admin-btn admin-btn--sm admin-btn--primary"
-                  onClick={() => setRecordSearch(recordSearchInput.trim())}
+                  onClick={() => {
+                    setRecordSearch(recordSearchInput.trim())
+                    setRecordPage(1)
+                  }}
                 >
                   搜索
                 </button>
@@ -1114,7 +1156,10 @@ const AdminPaidPromotions: React.FC = () => {
                   role="tab"
                   aria-selected={statusFilter === opt.value}
                   className={`admin-pp-status-tab${statusFilter === opt.value ? ' admin-pp-status-tab--active' : ''}`}
-                  onClick={() => setStatusFilter(opt.value)}
+                  onClick={() => {
+                    setStatusFilter(opt.value)
+                    setRecordPage(1)
+                  }}
                 >
                   {opt.label}
                 </button>
@@ -1131,7 +1176,11 @@ const AdminPaidPromotions: React.FC = () => {
             </div>
 
             <div className="admin-pp-list-body">
-              {records.length === 0 ? (
+              {loading && records.length === 0 ? (
+                <div className="admin-pp-empty admin-pp-empty--inline">
+                  <p>加载中…</p>
+                </div>
+              ) : records.length === 0 ? (
                 <div className="admin-pp-empty admin-pp-empty--inline">
                   <span className="admin-pp-empty-icon" aria-hidden="true">☰</span>
                   <p>暂无推广列表</p>
@@ -1150,6 +1199,28 @@ const AdminPaidPromotions: React.FC = () => {
                   />
                 ))
               )}
+            </div>
+
+            <div className="admin-pp-list-pagination" aria-label="推广列表分页">
+              <button
+                type="button"
+                className="admin-pp-list-page-btn"
+                disabled={recordPage <= 1 || loading}
+                onClick={() => setRecordPage((page) => Math.max(1, page - 1))}
+              >
+                上一页
+              </button>
+              <span className="admin-pp-list-page-meta">
+                第 {recordPage} / {recordTotalPages} 页 · 共 {recordTotal} 条 · 每页 {RECORDS_PAGE_SIZE} 条
+              </span>
+              <button
+                type="button"
+                className="admin-pp-list-page-btn"
+                disabled={recordPage >= recordTotalPages || loading}
+                onClick={() => setRecordPage((page) => Math.min(recordTotalPages, page + 1))}
+              >
+                下一页
+              </button>
             </div>
           </div>
         </div>
