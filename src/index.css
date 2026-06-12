@@ -25371,7 +25371,8 @@ button {
 .admin-pp-workspace {
   --pp-list-visible-rows: 4;
   --pp-list-row-height: 3.5rem;
-  --pp-list-min-width: 920px;
+  --pp-list-head-height: 2rem;
+  --pp-list-min-width: 1040px;
   display: grid;
   grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
   align-items: start;
@@ -25702,30 +25703,41 @@ button {
 .admin-pp-list-pane .admin-pp-list-body {
   flex: 0 0 auto;
   min-height: 0;
-  height: calc(
-    var(--pp-list-row-height) * var(--pp-list-visible-rows) + 0.5rem * (var(--pp-list-visible-rows) - 1)
-  );
-  max-height: calc(
-    var(--pp-list-row-height) * var(--pp-list-visible-rows) + 0.5rem * (var(--pp-list-visible-rows) - 1)
-  );
-  overflow-y: auto;
-  overflow-x: visible;
-  padding-right: 0.15rem;
+  overflow: visible;
+  height: auto;
+  max-height: none;
+  padding-right: 0;
 }
 
 .admin-pp-list-table-wrap {
   min-width: 0;
-  overflow-x: auto;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
+  max-height: calc(
+    var(--pp-list-head-height) + 0.55rem +
+    var(--pp-list-row-height) * var(--pp-list-visible-rows) +
+    0.5rem * (var(--pp-list-visible-rows) - 1)
+  );
+}
+
+.admin-pp-list-table-inner {
+  width: max(100%, var(--pp-list-min-width));
+  min-width: var(--pp-list-min-width);
 }
 
 .admin-pp-list-table-wrap .admin-pp-list-head-row {
-  min-width: var(--pp-list-min-width);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #ffffff;
+  box-shadow: 0 1px 0 #eef2f7;
 }
 
+.admin-pp-list-table-wrap .admin-pp-list-head-row,
 .admin-pp-list-table-wrap .admin-pp-list-item {
-  min-width: var(--pp-list-min-width);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .admin-pp-list-pagination {
@@ -25781,7 +25793,7 @@ button {
 
 .admin-pp-list-head-row,
 .admin-pp-list-item {
-  --pp-list-cols: minmax(130px, 1.05fr) 74px 74px minmax(148px, 1.2fr) 92px 248px;
+  --pp-list-cols: 172px 102px 98px 248px 112px 276px;
   display: grid;
   grid-template-columns: var(--pp-list-cols);
   gap: 0.55rem;
@@ -25803,7 +25815,14 @@ button {
 .admin-pp-list-head-row > span {
   display: flex;
   align-items: center;
+  justify-content: center;
   min-height: 1.5rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.admin-pp-list-head-row .admin-pp-list-col--shop {
+  justify-content: center;
 }
 
 .admin-pp-list-head-row .admin-pp-list-col--status,
@@ -25848,14 +25867,18 @@ button {
 
 .admin-pp-list-col {
   min-width: 0;
+  max-width: 100%;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .admin-pp-list-col--shop {
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
-  justify-content: flex-start;
+  gap: 0.45rem;
+  justify-content: center;
 }
 
 .admin-pp-list-col--shop .admin-pp-shop-avatar {
@@ -25863,19 +25886,38 @@ button {
 }
 
 .admin-pp-list-shop-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  max-width: calc(100% - 2.25rem);
+}
+
+.admin-pp-list-shop-line {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .admin-pp-list-shop-name {
-  font-size: 0.9375rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.875rem;
   color: #0f172a;
-  white-space: nowrap;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-pp-list-shop-id {
+  flex: 0 0 auto;
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-pp-list-col--status,
@@ -25890,14 +25932,17 @@ button {
 .admin-pp-list-col--config {
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
 
 .admin-pp-list-config-summary {
   margin: 0;
   width: 100%;
+  max-width: 100%;
   font-size: 0.8125rem;
   color: #334155;
   line-height: 1.35;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -25909,6 +25954,11 @@ button {
   justify-content: center;
   text-align: center;
   flex-shrink: 0;
+}
+
+.admin-pp-list-budget,
+.admin-pp-list-budget-empty {
+  white-space: nowrap;
 }
 
 .admin-pp-list-budget {
@@ -25923,17 +25973,24 @@ button {
   color: #cbd5e1;
 }
 
+.admin-pp-list-col .admin-badge,
+.admin-pp-list-col .admin-pp-channel {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 .admin-pp-list-col--actions {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.32rem;
   align-self: center;
   flex-shrink: 0;
   width: 100%;
   min-width: 0;
   padding-top: 0;
+  overflow: visible;
 }
 
 .admin-pp-list-action {
@@ -27200,10 +27257,11 @@ button {
     border-bottom: 1px solid #e8edf5;
   }
 
-  .admin-pp-list-pane .admin-pp-list-body {
-    height: auto;
+  .admin-pp-list-table-wrap {
     max-height: calc(
-      var(--pp-list-row-height) * var(--pp-list-visible-rows) + 0.5rem * (var(--pp-list-visible-rows) - 1)
+      var(--pp-list-head-height) + 0.55rem +
+      var(--pp-list-row-height) * var(--pp-list-visible-rows) +
+      0.5rem * (var(--pp-list-visible-rows) - 1)
     );
   }
 
