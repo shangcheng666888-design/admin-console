@@ -25370,7 +25370,7 @@ button {
 
 .admin-pp-workspace {
   --pp-list-visible-rows: 4;
-  --pp-list-row-height: 4.5rem;
+  --pp-list-row-height: 3.75rem;
   display: grid;
   grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   align-items: start;
@@ -25765,7 +25765,7 @@ button {
 
 .admin-pp-list-head-row,
 .admin-pp-list-item {
-  --pp-list-cols: minmax(136px, 1fr) minmax(72px, 0.5fr) minmax(72px, 0.5fr) minmax(120px, 1.05fr) minmax(88px, 0.62fr) minmax(148px, 0.92fr);
+  --pp-list-cols: minmax(124px, 0.92fr) minmax(68px, 0.46fr) minmax(68px, 0.46fr) minmax(108px, 0.98fr) minmax(80px, 0.56fr) minmax(212px, 1.22fr);
   display: grid;
   grid-template-columns: var(--pp-list-cols);
   gap: 0.65rem;
@@ -25806,7 +25806,7 @@ button {
 }
 
 .admin-pp-list-item {
-  min-height: var(--pp-list-row-height, 4.5rem);
+  min-height: var(--pp-list-row-height, 3.75rem);
   height: auto;
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
@@ -25907,35 +25907,41 @@ button {
 }
 
 .admin-pp-list-col--actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.3rem;
-  justify-content: stretch;
-  align-content: center;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   align-self: center;
   width: 100%;
   padding-top: 0;
 }
 
+.admin-pp-list-col--actions:has(.admin-pp-list-action:nth-child(4)) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.32rem;
+}
+
 .admin-pp-list-action {
-  width: 100%;
-  min-width: 0;
-  height: 28px;
-  padding: 0 0.45rem;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 3.35rem;
+  height: 30px;
+  padding: 0 0.62rem;
   border-radius: 8px;
   border: 1px solid #dbe3f0;
   background: #ffffff;
   color: #334155;
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
 
-.admin-pp-list-action:only-child {
-  grid-column: 1 / -1;
-  max-width: 5.75rem;
-  justify-self: center;
+.admin-pp-list-col--actions:has(.admin-pp-list-action:nth-child(4)) .admin-pp-list-action {
+  width: 100%;
+  min-width: 0;
 }
 
 .admin-pp-list-action--primary {
@@ -27221,15 +27227,24 @@ button {
   .admin-pp-list-col--budget { grid-area: budget; align-items: flex-start; text-align: left; }
   .admin-pp-list-col--actions {
     grid-area: actions;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     width: 100%;
     padding-top: 0.35rem;
     border-top: 1px solid #f1f5f9;
   }
 
+  .admin-pp-list-col--actions:has(.admin-pp-list-action:nth-child(4)) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-pp-list-action {
+    min-width: 4.5rem;
     height: 32px;
     font-size: 0.75rem;
+    padding: 0 0.75rem;
   }
 }
 
