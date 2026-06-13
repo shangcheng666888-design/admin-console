@@ -14883,6 +14883,37 @@ button {
   background: #b91c1c;
 }
 
+.admin-shops-ban-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.admin-shops-ban-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.admin-shops-ban-select,
+.admin-shops-ban-input,
+.admin-shops-ban-textarea {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.88rem;
+  color: #111827;
+  background: #fff;
+}
+
+.admin-shops-ban-textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  font-family: inherit;
+}
+
 .admin-shops-drawer-overlay {
   position: fixed;
   inset: 0;

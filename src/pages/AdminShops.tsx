@@ -44,9 +44,23 @@ interface Shop {
   /** 最近一次登录 IP（仅后台展示，不在 UI 中暴露给前台用户） */
   lastLoginIp?: string | null
   status: ShopStatus
+  /** 封禁原因（商家可见） */
+  banReason?: string | null
+  /** 封禁补充说明 */
+  banNotice?: string | null
+  /** 封禁时间 */
+  bannedAt?: string | null
   /** 开通时间 */
   createdAt: string
 }
+
+const BAN_REASON_OPTIONS = [
+  { value: '涉嫌虚假交易', label: '涉嫌虚假交易' },
+  { value: '商品违规', label: '商品违规' },
+  { value: '投诉过多', label: '投诉过多' },
+  { value: '资质问题', label: '资质问题' },
+  { value: '其他', label: '其他（自定义）' },
+] as const
 
 function formatDateTimeLocal(value: string): string {
   if (!value) return ''
@@ -86,6 +100,10 @@ const AdminShops: React.FC = () => {
   const [detailShop, setDetailShop] = useState<Shop | null>(null)
   const [editForm, setEditForm] = useState<Shop | null>(null)
   const [loading, setLoading] = useState(false)
+  const [banDialogOpen, setBanDialogOpen] = useState(false)
+  const [banReasonKey, setBanReasonKey] = useState<string>(BAN_REASON_OPTIONS[0].value)
+  const [banReasonCustom, setBanReasonCustom] = useState('')
+  const [banNotice, setBanNotice] = useState('')
   const { saveSuccess, saveError, loadError, actionSuccess, actionError } = useAdminToast()
   const { requestEditConfirm } = useAdminEditConfirm()
 
@@ -204,15 +222,30 @@ const AdminShops: React.FC = () => {
     setEditForm((prev) => (prev ? { ...prev, ...patch } : null))
   }
 
-  const toggleBan = () => {
+  const toggleBan = (opts?: { banReason?: string; banNotice?: string }) => {
     if (!detailShop) return
     const nextStatus: ShopStatus = detailShop.status === 'normal' ? 'banned' : 'normal'
-    api.patch(`/api/shops/${encodeURIComponent(detailShop.id)}`, { status: nextStatus })
+    const payload: Record<string, unknown> = { status: nextStatus }
+    if (nextStatus === 'banned') {
+      payload.banReason = opts?.banReason?.trim() || '违反平台经营规范'
+      if (opts?.banNotice?.trim()) payload.banNotice = opts.banNotice.trim()
+    }
+    api.patch(`/api/shops/${encodeURIComponent(detailShop.id)}`, payload)
       .then(() => {
-        const updated = { ...detailShop, status: nextStatus }
+        const updated: Shop = {
+          ...detailShop,
+          status: nextStatus,
+          banReason: nextStatus === 'banned' ? (payload.banReason as string) : null,
+          banNotice: nextStatus === 'banned' ? ((payload.banNotice as string | undefined) ?? null) : null,
+          bannedAt: nextStatus === 'banned' ? new Date().toISOString() : null,
+        }
         setShops((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
         setDetailShop(updated)
         setEditForm(null)
+        setBanDialogOpen(false)
+        setBanReasonKey(BAN_REASON_OPTIONS[0].value)
+        setBanReasonCustom('')
+        setBanNotice('')
         actionSuccess(nextStatus === 'banned' ? '已封禁店铺' : '已解除封禁')
       })
       .catch((err: unknown) => {
@@ -223,14 +256,31 @@ const AdminShops: React.FC = () => {
   const confirmToggleBan = () => {
     if (!detailShop) return
     const isBan = detailShop.status === 'normal'
+    if (isBan) {
+      setBanReasonKey(BAN_REASON_OPTIONS[0].value)
+      setBanReasonCustom('')
+      setBanNotice('')
+      setBanDialogOpen(true)
+      return
+    }
     requestEditConfirm({
-      title: isBan ? '确认封禁店铺' : '确认解除封禁',
-      message: isBan
-        ? `确认封禁店铺「${detailShop.name}」？封禁后该店铺将无法接单，前台用户也不可浏览其商品。`
-        : `确认解除店铺「${detailShop.name}」的封禁？解除后将恢复正常展示与接单。`,
-      confirmLabel: isBan ? '确认封禁' : '确认解除',
-      onConfirm: toggleBan,
+      title: '确认解除封禁',
+      message: `确认解除店铺「${detailShop.name}」的封禁？解除后将恢复正常展示与接单。`,
+      confirmLabel: '确认解除',
+      onConfirm: () => toggleBan(),
     })
+  }
+
+  const submitBanDialog = () => {
+    const reason =
+      banReasonKey === '其他'
+        ? banReasonCustom.trim()
+        : banReasonKey
+    if (!reason) {
+      actionError(new Error('请填写封禁原因'))
+      return
+    }
+    toggleBan({ banReason: reason, banNotice })
   }
 
   const displayShop = editForm ?? detailShop
@@ -605,6 +655,24 @@ const AdminShops: React.FC = () => {
                         : '—'}
                     </dd>
                   </div>
+                  {displayShop!.status === 'banned' && (
+                    <>
+                      <div className="admin-shops-detail-row">
+                        <dt>封禁原因</dt>
+                        <dd>{displayShop!.banReason || '—'}</dd>
+                      </div>
+                      {displayShop!.banNotice && (
+                        <div className="admin-shops-detail-row">
+                          <dt>商家说明</dt>
+                          <dd>{displayShop!.banNotice}</dd>
+                        </div>
+                      )}
+                      <div className="admin-shops-detail-row">
+                        <dt>封禁时间</dt>
+                        <dd>{displayShop!.bannedAt ? formatDateTimeLocal(displayShop!.bannedAt) : '—'}</dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
                 </section>
                 <section className="admin-drawer-section">
@@ -677,6 +745,77 @@ const AdminShops: React.FC = () => {
         </>
       )}
 
+
+      {banDialogOpen && detailShop && (
+        <div
+          className="admin-shops-ban-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-shop-ban-title"
+          onClick={() => setBanDialogOpen(false)}
+        >
+          <div className="admin-shops-ban-panel" onClick={(e) => e.stopPropagation()}>
+            <h3 id="admin-shop-ban-title" className="admin-shops-ban-title">
+              封禁店铺「{detailShop.name}」
+            </h3>
+            <p className="admin-shops-ban-text">
+              封禁后该店铺将无法接单，前台用户不可浏览其商品。商家登录后将看到封禁提示并引导联系客服申诉。
+            </p>
+            <label className="admin-shops-ban-field">
+              <span className="admin-shops-ban-field-label">封禁原因</span>
+              <select
+                className="admin-shops-ban-select"
+                value={banReasonKey}
+                onChange={(e) => setBanReasonKey(e.target.value)}
+              >
+                {BAN_REASON_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+            {banReasonKey === '其他' && (
+              <label className="admin-shops-ban-field">
+                <span className="admin-shops-ban-field-label">自定义原因</span>
+                <input
+                  type="text"
+                  className="admin-shops-ban-input"
+                  value={banReasonCustom}
+                  onChange={(e) => setBanReasonCustom(e.target.value)}
+                  placeholder="请填写封禁原因"
+                  maxLength={120}
+                />
+              </label>
+            )}
+            <label className="admin-shops-ban-field">
+              <span className="admin-shops-ban-field-label">给商家的补充说明（可选）</span>
+              <textarea
+                className="admin-shops-ban-textarea"
+                value={banNotice}
+                onChange={(e) => setBanNotice(e.target.value)}
+                placeholder="例如：请在申诉时提供相关订单说明"
+                rows={3}
+                maxLength={300}
+              />
+            </label>
+            <div className="admin-shops-ban-actions">
+              <button
+                type="button"
+                className="admin-shops-ban-btn admin-shops-ban-btn--secondary"
+                onClick={() => setBanDialogOpen(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="admin-shops-ban-btn admin-shops-ban-btn--primary"
+                onClick={submitBanDialog}
+              >
+                确认封禁
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
