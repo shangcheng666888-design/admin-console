@@ -38,8 +38,34 @@ function formatApplyTime(iso: string): string {
 const AdminAuditShops: React.FC = () => {
   const [list, setList] = useState<PendingShopApply[]>([])
   const [detail, setDetail] = useState<PendingShopApply | null>(null)
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const { loadError, actionSuccess, actionError } = useAdminToast()
+
+  useEffect(() => {
+    if (!previewImage) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewImage(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [previewImage])
+
+  const openPreview = (src: string, alt: string) => {
+    setPreviewImage({ src, alt })
+  }
+
+  const renderAssetImage = (src: string, alt: string, className = 'admin-audit-shop-asset-img') => (
+    <button
+      type="button"
+      className="admin-audit-shop-asset-btn"
+      onClick={() => openPreview(src, alt)}
+      aria-label={`查看${alt}大图`}
+      title="点击查看大图"
+    >
+      <img src={src} alt={alt} className={className} />
+    </button>
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -295,31 +321,31 @@ const AdminAuditShops: React.FC = () => {
                   <div className="admin-audit-shop-asset">
                     <span className="admin-audit-shop-asset-label">店铺标志</span>
                     <div className="admin-audit-shop-asset-box admin-audit-shop-asset-box--logo">
-                      {detail.logo ? <img src={detail.logo} alt="店铺标志" className="admin-audit-shop-asset-img admin-audit-shop-asset-img--logo" /> : <span className="admin-audit-shop-asset-empty">未上传</span>}
+                      {detail.logo ? renderAssetImage(detail.logo, '店铺标志', 'admin-audit-shop-asset-img admin-audit-shop-asset-img--logo') : <span className="admin-audit-shop-asset-empty">未上传</span>}
                     </div>
                   </div>
                   <div className="admin-audit-shop-asset">
                     <span className="admin-audit-shop-asset-label">证件正面</span>
                     <div className="admin-audit-shop-asset-box">
-                      {detail.idFront ? <img src={detail.idFront} alt="证件正面" className="admin-audit-shop-asset-img" /> : <span className="admin-audit-shop-asset-empty">未上传</span>}
+                      {detail.idFront ? renderAssetImage(detail.idFront, '证件正面') : <span className="admin-audit-shop-asset-empty">未上传</span>}
                     </div>
                   </div>
                   <div className="admin-audit-shop-asset">
                     <span className="admin-audit-shop-asset-label">证件反面</span>
                     <div className="admin-audit-shop-asset-box">
-                      {detail.idBack ? <img src={detail.idBack} alt="证件反面" className="admin-audit-shop-asset-img" /> : <span className="admin-audit-shop-asset-empty">未上传</span>}
+                      {detail.idBack ? renderAssetImage(detail.idBack, '证件反面') : <span className="admin-audit-shop-asset-empty">未上传</span>}
                     </div>
                   </div>
                   <div className="admin-audit-shop-asset">
                     <span className="admin-audit-shop-asset-label">手持证件照</span>
                     <div className="admin-audit-shop-asset-box admin-audit-shop-asset-box--tall">
-                      {detail.idHandheld ? <img src={detail.idHandheld} alt="手持证件照" className="admin-audit-shop-asset-img" /> : <span className="admin-audit-shop-asset-empty">未上传</span>}
+                      {detail.idHandheld ? renderAssetImage(detail.idHandheld, '手持证件照') : <span className="admin-audit-shop-asset-empty">未上传</span>}
                     </div>
                   </div>
                   <div className="admin-audit-shop-asset">
                     <span className="admin-audit-shop-asset-label">乙方签名</span>
                     <div className="admin-audit-shop-asset-box admin-audit-shop-asset-box--sign">
-                      {detail.signature ? <img src={detail.signature} alt="乙方签名" className="admin-audit-shop-asset-img admin-audit-shop-asset-img--sign" /> : <span className="admin-audit-shop-asset-empty">未上传</span>}
+                      {detail.signature ? renderAssetImage(detail.signature, '乙方签名', 'admin-audit-shop-asset-img admin-audit-shop-asset-img--sign') : <span className="admin-audit-shop-asset-empty">未上传</span>}
                     </div>
                   </div>
                 </div>
@@ -332,6 +358,34 @@ const AdminAuditShops: React.FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {previewImage && (
+        <div
+          className="admin-audit-image-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-label={previewImage.alt}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            type="button"
+            className="admin-audit-image-preview-close"
+            onClick={(event) => {
+              event.stopPropagation()
+              setPreviewImage(null)
+            }}
+            aria-label="关闭大图预览"
+          >
+            ×
+          </button>
+          <img
+            src={previewImage.src}
+            alt={previewImage.alt}
+            className="admin-audit-image-preview-img"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   )
